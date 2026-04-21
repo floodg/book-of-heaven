@@ -201,21 +201,25 @@ supabase secrets set ANYTHINGLLM_WORKSPACE=book-of-heaven
 
 ---
 
-## AnythingLLM Workspace System Prompt
+## AnythingLLM Workspace Configuration
 
-Set this in AnythingLLM → Workspace Settings → Chat Settings → System Prompt:
+The workspace system prompt and chat/retrieval settings are versioned in `anythingllm/workspaces/` so local dev and the production VPS stay in sync. See [`anythingllm/README.md`](anythingllm/README.md) for the full workflow. TL;DR:
 
+```bash
+# Apply the committed config to your local AnythingLLM
+ANYTHINGLLM_URL=http://localhost:3001 \
+ANYTHINGLLM_KEY=your-local-key \
+node anythingllm/apply-workspace.mjs \
+  --config anythingllm/workspaces/book-of-heaven.config.json
+
+# Same command, pointed at the VPS, keeps production in lockstep
+ANYTHINGLLM_URL=https://your-vps-host:3001 \
+ANYTHINGLLM_KEY=your-production-key \
+node anythingllm/apply-workspace.mjs \
+  --config anythingllm/workspaces/book-of-heaven.config.json
 ```
-You are a research assistant for the Book of Heaven, the writings of Luisa Piccarreta.
 
-When answering questions:
-1. Always cite the source document name (volume and number) for every passage you reference, and if possible the timestamps from the VTT and SRT files
-2. Format citations like: [Book of Heaven Volume X - Number Y (hh:mm:ss)]
-3. Quote relevant passages directly when helpful
-4. If you cannot find the source name, say so rather than guessing
-
-The user is doing theological research and needs accurate source references.
-```
+Edit the prompt in [`anythingllm/workspaces/book-of-heaven.prompt.md`](anythingllm/workspaces/book-of-heaven.prompt.md) — never directly in the AnythingLLM UI — then re-run the apply command to push the change.
 
 ---
 

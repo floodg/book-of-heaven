@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/workspace.schema.json",
+  "name": "Book of Heaven Narrated",
+  "slug": "book-of-heaven",
+  "promptFile": "book-of-heaven.prompt.md",
+  "settings": {
+    "openAiTemp": 0.7,
+    "openAiHistory": 20,
+    "similarityThreshold": 0.25,
+    "chatProvider": "anthropic",
+    "chatModel": "claude-haiku-4-5-20251001",
+    "topN": 10,
+    "chatMode": "automatic",
+    "queryRefusalResponse": "There is no relevant information in this workspace to answer your query.",
+    "vectorSearchMode": "rerank"
+  }
+}
