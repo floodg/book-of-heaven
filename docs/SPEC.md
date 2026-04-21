@@ -62,6 +62,7 @@ book-of-heaven/
 │   ├── SPEC-chat-ui.md
 │   ├── SPEC-history.md                  ← new Sidebar + ThreadRow
 │   ├── SPEC-projects.md                 ← Projects + per-project instructions
+│   ├── SPEC-source-linking.md           ← citation → PDF page + YouTube timestamp pipeline
 │   └── local-dev-setup.md
 ├── frontend/
 │   ├── src/
@@ -98,7 +99,8 @@ book-of-heaven/
 │   │   ├── 002_thread_id.sql            ← adds thread_id uuid column
 │   │   ├── 003_chat_threads.sql         ← per-thread title metadata
 │   │   ├── 004_chat_organization.sql    ← chat_projects + project_id (+ historical Labels tables)
-│   │   └── 005_projects_redesign.sql    ← drops Labels, adds description + instructions + pinned_at
+│   │   ├── 005_projects_redesign.sql    ← drops Labels, adds description + instructions + pinned_at
+│   │   └── 006_chat_message_sources.sql ← adds jsonb sources column for citation source linking
 │   └── functions/
 │       └── chat-proxy/
 │           └── index.ts
@@ -169,17 +171,22 @@ Edge Function — reads chat_threads.project_id back, fetches chat_projects.inst
                  as a system-style preamble.
       ↓
 Edge Function — forwards composed message to AnythingLLM /stream-chat, aggregates SSE
-                 (in parallel with a title-generation call when the thread has no title yet)
+                 (in parallel with a title-generation call when the thread has no title yet),
+                 capturing the `sources` retrieval payload on the finalize frame
       ↓
-AnythingLLM — searches 612 embedded transcripts, calls Claude, streams back
+AnythingLLM — searches 612 embedded transcripts + PDFs, calls Claude, streams back
+                 text chunks and source chunks
       ↓
-Edge Function — inserts assistant row (same thread_id) into chat_messages
+Edge Function — inserts assistant row (same thread_id) into chat_messages, persisting
+                 the retrieval sources into chat_messages.sources (jsonb)
       ↓
 Edge Function — updates chat_threads.title if one was generated this turn
       ↓
-Edge Function — returns { reply, thread_id, title? } (non-streaming public contract)
+Edge Function — returns { reply, thread_id, title?, sources? } (non-streaming public contract)
       ↓
-ChatWindow.tsx — renders reply as markdown with CitationBadge highlights
+ChatWindow.tsx — renders reply as markdown; per-message CitationBadge uses the message's
+                 sources + the session-scoped YouTube map to turn each citation into a
+                 clickable PDF page link + YouTube timestamp link (see SPEC-source-linking.md)
       ↓
 ChatPage.tsx — calls WorkspaceContext.refresh(); Sidebar + pages re-render with the
                new thread and its freshly-generated title

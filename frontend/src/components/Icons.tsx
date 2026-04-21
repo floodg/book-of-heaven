@@ -167,3 +167,27 @@ export function IconFolderMove({ size, ...rest }: IconProps) {
     </svg>
   )
 }
+
+// Document icon used on citation pills to open the matching volume PDF at
+// the cited page.
+export function IconPdf({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 12, rest)}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="14 3 14 9 20 9" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+    </svg>
+  )
+}
+
+// Play-in-rounded-square icon used on citation pills to open the YouTube
+// video for that transcript number at the cited timestamp.
+export function IconYoutube({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 12, rest)}>
+      <rect x="3" y="6" width="18" height="12" rx="3" />
+      <polygon points="10 9 16 12 10 15" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

@@ -12,14 +12,36 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 }
 
+// A single retrieved chunk AnythingLLM surfaces alongside the generated reply.
+// AnythingLLM emits these on the finalize SSE frame (and sometimes also on
+// textResponseChunk frames). We pass them through untouched to the frontend
+// so it can resolve per-citation links to the underlying PDF page / YouTube
+// timestamp — see docs/SPEC-source-linking.md.
+export interface AnythingLlmSource {
+  title?: string
+  chunkSource?: string
+  text?: string
+  score?: number
+  _distance?: number
+  // AnythingLLM sometimes adds a `metadata` object with page info. We keep
+  // the raw shape here and let the frontend dig as needed.
+  metadata?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 // Call AnythingLLM's streaming chat endpoint and aggregate all chunks into a
-// single string. Returns { text, error }: `error` is the AnythingLLM-reported
-// error string if the stream sent one, otherwise null. Throws only on HTTP or
-// transport failure (so callers can decide whether to surface the error or
-// fall back silently).
+// single string. Returns { text, error, sources }:
+// - `error` is the AnythingLLM-reported error string if the stream sent one,
+//   otherwise null.
+// - `sources` is the last non-empty `sources` array we saw on any SSE frame
+//   (AnythingLLM typically sends it on the finalize frame; taking the last
+//   occurrence is safe because earlier frames either omit it or carry the
+//   same list).
+// Throws only on HTTP or transport failure.
 async function anythingLlmChat(message: string): Promise<{
   text: string
   error: string | null
+  sources: AnythingLlmSource[] | null
 }> {
   const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
   const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
@@ -49,6 +71,7 @@ async function anythingLlmChat(message: string): Promise<{
   let buffer = ''
   let fullText = ''
   let llmError: string | null = null
+  let sources: AnythingLlmSource[] | null = null
 
   while (true) {
     const { value, done } = await reader.read()
@@ -69,12 +92,16 @@ async function anythingLlmChat(message: string): Promise<{
             textResponse?: unknown
             error?: unknown
             close?: boolean
+            sources?: unknown
           }
           if (typeof chunk.textResponse === 'string') {
             fullText += chunk.textResponse
           }
           if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
             llmError = chunk.error
+          }
+          if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
+            sources = chunk.sources as AnythingLlmSource[]
           }
         } catch (parseErr) {
           console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
@@ -83,7 +110,7 @@ async function anythingLlmChat(message: string): Promise<{
     }
   }
 
-  return { text: fullText, error: llmError }
+  return { text: fullText, error: llmError, sources }
 }
 
 // Clean up an LLM-generated title. The workspace system prompt pushes the
@@ -331,9 +358,25 @@ serve(async (req) => {
         '" must have documents embedded and an LLM configured.'
     }
 
+    // Persist the retrieval sources alongside the assistant message so the
+    // citation → PDF-page / YouTube-timestamp links survive a page reload
+    // (the frontend resolves those links from this payload — see
+    // docs/SPEC-source-linking.md). We deliberately store whatever shape
+    // AnythingLLM sent: the frontend is defensive about fields, and we want
+    // to be able to improve the matching logic later without a migration.
+    const sourcesForDb = mainResult.sources && mainResult.sources.length > 0
+      ? mainResult.sources
+      : null
+
     const { error: insertAssistantError } = await supabase
       .from('chat_messages')
-      .insert({ user_id: user.id, role: 'assistant', content: reply, thread_id: threadId })
+      .insert({
+        user_id: user.id,
+        role: 'assistant',
+        content: reply,
+        thread_id: threadId,
+        sources: sourcesForDb,
+      })
     if (insertAssistantError) {
       console.error('Failed to insert assistant message', insertAssistantError)
       throw insertAssistantError
@@ -355,7 +398,12 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ reply, thread_id: threadId, title: title ?? null }),
+      JSON.stringify({
+        reply,
+        thread_id: threadId,
+        title: title ?? null,
+        sources: sourcesForDb,
+      }),
       { status: 200, headers: jsonHeaders },
     )
   } catch (err) {

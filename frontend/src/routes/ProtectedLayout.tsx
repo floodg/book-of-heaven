@@ -1,6 +1,8 @@
 import type { Session, User } from '@supabase/supabase-js'
 import { Outlet } from 'react-router-dom'
 import { WorkspaceProvider } from '../lib/WorkspaceContext'
+import { YoutubeMapProvider } from '../lib/YoutubeMapContext'
+import { PdfPagesProvider } from '../lib/PdfPagesContext'
 import { Sidebar } from '../components/Sidebar'
 
 interface ProtectedLayoutProps {
@@ -21,12 +23,16 @@ interface ProtectedLayoutProps {
 export function ProtectedLayout({ user, session }: ProtectedLayoutProps) {
   return (
     <WorkspaceProvider user={user}>
-      <div className="app-shell">
-        <div className="app-main">
-          <Sidebar user={user} />
-          <Outlet context={{ user, session }} />
-        </div>
-      </div>
+      <YoutubeMapProvider>
+        <PdfPagesProvider>
+          <div className="app-shell">
+            <div className="app-main">
+              <Sidebar user={user} />
+              <Outlet context={{ user, session }} />
+            </div>
+          </div>
+        </PdfPagesProvider>
+      </YoutubeMapProvider>
     </WorkspaceProvider>
   )
 }
