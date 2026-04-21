@@ -416,3 +416,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local environment files
+frontend/.env
+frontend/node_modules
+supabase/functions/.env

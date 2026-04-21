@@ -1,0 +1,39 @@
+:root {
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Lora', 'Playfair Display', Georgia, serif;
+
+  font: 16px/1.5 var(--sans);
+  color: #1c0a00;
+  background: #faf7f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: #faf7f2;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  color: #1c0a00;
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
