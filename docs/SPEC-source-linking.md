@@ -55,37 +55,62 @@ Examples that parse:
 ## PDF page resolution
 
 Inputs:
-- `cite.volume`, `cite.number` (from `parseCitation`)
-- `sources` (the AnythingLLM retrieval chunks for this assistant turn)
-- `pdfPages` (pre-built `{ volume: { number: page } }` index, loaded once from `/data/pdf-pages.json`)
+- `cite.volume`, `cite.number`, `cite.timestampSec` (from `parseCitation`)
+- `pdfPages` (pre-built index, loaded once from `/data/pdf-pages.json`). Each `(volume, number)` entry is either an array of timestamped segments or a single-segment object — see schema below.
 
-Algorithm (`resolveCitationLinks` in `frontend/src/lib/sources.ts`):
+Algorithm (`resolveCitationLinks` in `frontend/src/lib/sources.ts`) is deliberately tiny:
 
-1. Filter `sources` to chunks that (a) look like PDFs (`title` ends in `.pdf` or `chunkSource` contains `.pdf`) and (b) refer to this volume — we accept padded (`Volume_04`), unpadded (`Volume 4`), and `Vol 4` variants, with a word-boundary guard so "Volume 4" doesn't match "Volume 40".
-2. Sort candidates by retrieval quality — higher `score`, or lower `_distance`, first.
-3. Take the top chunk and try to pull a page number from it, in order:
-   - `metadata.page` / `metadata.pageNumber` (if AnythingLLM added them)
-   - `pageNumber:\s*(\d+)` or `page:\s*(\d+)` anywhere in `chunkSource`, `text`, or `title`
-   - `#page=N` / `?page=N` in `chunkSource`
-   - `page_N` / `page N` / `page-N` fallback
-4. **If no page came from the chunk**, fall back to the offline index: `pdfPages[cite.volume][cite.number]`. This is the main path in practice — the AnythingLLM PDF collector we use strips page metadata during embedding, so step 3 almost always returns null. The index is produced by `scripts/build-pdf-page-index.mjs` (see below).
-5. Build `pdfHref` as a query string into our React viewer: `` `/pdf/${cite.volume}?page=${page}&q=${snippet}` ``. Missing params are just omitted.
-   - `snippet` is the first 4-6 consecutive words of the matched chunk's PDF text (with leading punctuation stripped). Short enough to survive small differences in pdf.js's text extraction, long enough to uniquely identify the passage.
-6. Use the same top chunk's `text` (stripped of any `<document_metadata>...</document_metadata>` prefix, collapsed whitespace, trimmed to 400 chars) as the `excerpt` for the pill's hover tooltip.
+1. Look up `pdfPages[String(cite.volume)][String(cite.number)]`.
+2. `PdfPagesContext.pickEntry(value, cite.timestampSec)` resolves it to a single `{ page, anchor? }`:
+   - For an array of segments, pick the segment with the greatest `t` ≤ the citation timestamp. When the citation has no timestamp, or the timestamp is before the first segment, the first segment is used.
+   - For a single-entry object (fallback path for Numbers without date headings), return it unchanged.
+3. Build `pdfHref` as a query string into our React viewer: `` `/pdf/${cite.volume}?page=${page}&q=${anchor}` ``. Missing params are just omitted.
 
-If the `sources` array is empty or `null` (older assistant messages written before migration `006`, AnythingLLM streams that didn't surface sources, etc.), step 4 still applies — we always know the volume and number from the parsed citation, so the index alone is enough to produce a deep link. The pill just won't have a hover excerpt.
+The AnythingLLM retrieval `sources` payload is still threaded through the component tree (and persisted on `chat_messages.sources`), but `resolveCitationLinks` no longer reads from it. Earlier revisions of this spec described matching the retrieval chunks by volume, pulling the top-ranked PDF chunk, and deriving the page + highlight from its text — that produced visibly wrong highlights because PDFs are whole-volume documents and a single "best chunk for Volume 1" is, at most, correct for one of the several Vol 1 Numbers cited in the reply. The offline index is keyed by `(volume, number, t)`, which is exactly what a citation carries, so it's always correct when present.
+
+If the index has no entry for `(cite.volume, cite.number)` — typically because the VTT had no detectable date headings and the shingle fallback (see below) still fell below the match threshold — the PDF pill still works: it opens the volume without a page or highlight, and the user can scroll or Ctrl-F.
 
 ### Building the page index
 
-`scripts/build-pdf-page-index.mjs` walks the VTT folder and, for each `Book of Heaven Volume X - Number Y.vtt`:
+`scripts/build-pdf-page-index.mjs` walks the VTT folder and, for each `Book of Heaven Volume X - Number Y.vtt`, tries two strategies in order:
 
-1. Parses `(volume, number)` from the filename.
-2. Strips VTT headers / timestamps to get plain text, then selects ~8 long sentences as "anchors" (short filler lines like "Okay so..." get rejected — they don't carry enough signal).
-3. Opens `Volume_XX.pdf` with `pdfjs-dist` (legacy Node build), extracts per-page text, normalizes to a set of 5-word shingles per page.
-4. Scores each anchor against each page by shingle overlap. Takes the best-scoring page, then walks backward for the **earliest** page that still scores within 90% of the peak — that's usually where the diary entry actually begins, rather than a later page that happened to repeat a phrase.
-5. If the best score crosses a threshold (default 0.5), records the page. Below-threshold entries are listed at the end and simply don't go into the index; those citations fall back to the volume front page.
+**Primary: date-driven segmentation.** This is the path that produces the high-precision per-timestamp index, and the reason Francis's long multi-entry Numbers now highlight correctly. For each volume:
 
-Output: `frontend/public/data/pdf-pages.json`, shape `{ "<volume>": { "<number>": <page> } }`. Typical size: ~15-25 KB, easily inlined. `PdfPagesContext` fetches it once at app mount and exposes it via `usePdfPages()`.
+1. Opens `Volume_XX.pdf` with `pdfjs-dist` (legacy Node build), extracts per-page text, and builds a date-header index: `"december 8 1902" → { page: 63, display: "December 8, 1902" }`. The first occurrence of each date wins, which corresponds to the entry heading because the PDFs use a canonical centered date header at the start of every entry.
+2. For each Number's VTT, parses the cues (with timestamps) and walks them in order looking for date mentions matching `\b<month>\s+\d{1,2}(?:st|nd|rd|th)?,?\s+((?:18|19|20)\d{2})\b`. Each match yields a candidate segment `{ t: cue.startSec, page, anchor: display }`, where `anchor` is the canonical "December 8, 1902" form taken directly from the PDF page's header.
+3. Deduplicates segments on `(page, anchor)` so a Francis restating a date ("December 4, 1902.", "So this is December 4, 1902.") collapses to the first occurrence. Segments whose date isn't in the PDF's date index are silently dropped — this handles misreads without disturbing the surrounding segments.
+4. If at least one segment survives, the Number's index entry is the array of segments, sorted by `t`.
+
+**Fallback: single-page shingle match.** When a VTT has zero date mentions (short summaries, poems, or commentary Numbers that don't read dates aloud), the old heuristic takes over:
+
+1. Strips VTT headers / timestamps to get plain text, selects ~8 long sentences as "anchors" (short filler lines like "Okay so..." get rejected).
+2. Normalizes each page's text to a set of 5-word shingles.
+3. Scores each anchor against each page by shingle overlap, picks the best-scoring page, then walks backward for the earliest page within 90% of the peak (usually where the entry begins).
+4. If the best score crosses a threshold (default 0.5), records `{ page, anchor? }`. The anchor is the first 5-6-word window on that page whose normalized form matches one of this Number's anchor shingles, taken verbatim (casing + inline punctuation preserved) so pdf.js's phrase search always highlights it. One extra content token is appended when it's at least 3 characters long, so we don't produce truncated fragments like `"impossible to c"` caused by hyphenated line breaks.
+
+Below-threshold Numbers (neither strategy worked) are listed at the end and simply don't go into the index; those citations fall back to opening the volume without a page or highlight.
+
+### Output schema
+
+`frontend/public/data/pdf-pages.json`:
+
+```jsonc
+{
+  "<volume>": {
+    "<number>": /* one of: */
+      // (a) array of timestamped segments — the primary shape
+      [
+        { "t": 0,    "page": 60, "anchor": "November 21, 1902" },
+        { "t": 2443, "page": 63, "anchor": "December 8, 1902" }
+      ],
+      // (b) single-entry fallback — for Numbers without date headings
+      { "page": 13, "anchor": "As I lost consciousness, Our Lord" }
+      // (c) legacy bare number — tolerated by the loader; the builder no longer writes this
+  }
+}
+```
+
+`PdfPagesContext` fetches it once at app mount, validates each entry, sorts segment arrays by `t`, and exposes the index via `usePdfPages()`. `pickEntry(value, timestampSec)` resolves a value to a single `{ page, anchor? }` using the rules in the algorithm section above. Typical size: ~40-80 KB, easily inlined.
 
 Usage (from the repo root):
 
@@ -104,7 +129,7 @@ Options:
 | `--min-score <0..1>` | `0.5` | Below this, the page for that Number is left unresolved |
 | `--verbose` | off | Log every anchor's best page + score |
 
-Precision: **Number-level**. A citation with a late timestamp (e.g. `Number 13 (01:04:29)`) still opens at the Number's first page. For almost all entries that's within 1-3 pages of the actual passage — good enough to search with Ctrl+F. True timestamp-level precision would require per-cue indexing and is tracked as a follow-up.
+Precision: **timestamp-level when the VTT has date headings**, **Number-level otherwise.** A Number whose VTT reads multiple dates aloud produces one segment per dated entry, and a citation's timestamp picks the correct segment — so `[Vol 4 · No 13 · 1:04:06]` now opens at page 63 ("December 8, 1902") instead of the Number's opening page (60, "November 21, 1902"). Numbers whose VTT has no dates fall back to single-page precision via the shingle heuristic.
 
 ---
 
@@ -156,14 +181,14 @@ Highlighting styles live in `PdfViewerPage.css` and override pdf.js's default `.
 
 | Condition | Resulting pill |
 |---|---|
-| Normal case | `[Vol 4 · No 7 · 1:23:45]` + PDF icon (→ viewer at page + highlighted snippet) + YouTube icon (→ timestamp) |
-| No source chunks for this volume | Pill + PDF icon (→ viewer at page from offline index, no highlight) + YouTube icon |
-| PDF chunk found but no page or index entry | Pill + PDF icon (→ viewer at volume page 1) + YouTube icon |
+| Normal case | `[Vol 4 · No 7 · 1:23:45]` + PDF icon (→ viewer at page + highlighted anchor phrase) + YouTube icon (→ timestamp) |
+| Index has page but no anchor | Pill + PDF icon (→ viewer at page, no highlight) + YouTube icon |
+| Index missing entry for this (volume, number) | Pill + PDF icon (→ viewer at volume page 1) + YouTube icon |
 | Citation has no timestamp | Pill + PDF icon + YouTube icon linking to video start |
 | Citation number missing from youtube-map.json | Pill + PDF icon, no YouTube icon |
 | Citation text unparseable (malformed) | Plain amber pill with the raw citation text, no action icons |
 
-Hovering the pill always shows a tooltip: either the retrieved source excerpt (when one matched) or the original unabbreviated citation text.
+Hovering the pill always shows a tooltip: the index-derived anchor phrase when one is available (a short verbatim preview of what the PDF will open to), otherwise the original unabbreviated citation text.
 
 ---
 
@@ -174,7 +199,7 @@ Hovering the pill always shows a tooltip: either the retrieved source excerpt (w
 | `supabase/functions/chat-proxy/index.ts` | Captures `sources` from AnythingLLM SSE, persists to `chat_messages.sources`, returns in response body |
 | `supabase/migrations/006_chat_message_sources.sql` | Adds `sources jsonb` column to `chat_messages` |
 | `frontend/src/lib/citations.ts` | `parseCitation`, `CITATION_PATTERN`, `formatTimestamp`, `padVolume` |
-| `frontend/src/lib/sources.ts` | `resolveCitationLinks` — PDF chunk matching + page index lookup + link builders |
+| `frontend/src/lib/sources.ts` | `resolveCitationLinks` — (volume, number) lookup into the offline index + link builders |
 | `frontend/src/lib/YoutubeMapContext.tsx` | One-time fetch of `/data/youtube-map.json`, exposed via `useYoutubeMap()` |
 | `frontend/src/lib/PdfPagesContext.tsx` | One-time fetch of `/data/pdf-pages.json`, exposed via `usePdfPages()` |
 | `frontend/src/components/CitationBadge.tsx` | Pill component + `highlightCitations` walker |
@@ -184,7 +209,7 @@ Hovering the pill always shows a tooltip: either the retrieved source excerpt (w
 | `frontend/src/routes/PdfViewerPage.css` | Viewer toolbar + text-layer highlight styles |
 | `frontend/public/pdfs/` | The 36 volume PDFs (binaries not in git) |
 | `frontend/public/data/youtube-map.json` | `{ "1": "videoId", ... }` |
-| `frontend/public/data/pdf-pages.json` | `{ "<volume>": { "<number>": <page> } }` |
+| `frontend/public/data/pdf-pages.json` | `{ "<volume>": { "<number>": Segment[] \| Entry } }` — see "Output schema" above |
 | `scripts/build-youtube-map.mjs` | Helper to regenerate the YouTube map from VTT files / CSV / playlist JSON |
 | `scripts/build-pdf-page-index.mjs` | Builds `pdf-pages.json` by text-matching VTT content against PDF page text |
 | `package.json` (root) | Pins `pdfjs-dist` as a devDependency for the scripts; exposes `npm run build-pdf-pages` |

@@ -1,186 +1,6561 @@
 {
   "1": {
-    "2": 4,
-    "3": 5,
-    "4": 8,
-    "5": 10,
-    "6": 13,
-    "7": 16,
-    "10": 28,
-    "11": 33
+    "2": {
+      "page": 4,
+      "anchor": "Him for having been so good"
+    },
+    "3": {
+      "page": 5,
+      "anchor": "If I was in the"
+    },
+    "4": {
+      "page": 8,
+      "anchor": "good to me, and I, still"
+    },
+    "5": {
+      "page": 10,
+      "anchor": "I could not look at Him"
+    },
+    "6": {
+      "page": 13,
+      "anchor": "As I lost consciousness, Our Lord"
+    },
+    "7": {
+      "page": 16,
+      "anchor": "the confessor, and then I would"
+    },
+    "10": {
+      "page": 28,
+      "anchor": "My Spouse Jesus gave me new"
+    },
+    "11": [
+      {
+        "t": 915,
+        "page": 34,
+        "anchor": "September 14, 1899"
+      }
+    ]
   },
   "2": {
-    "1": 1,
-    "2": 7,
-    "3": 20,
-    "4": 30,
-    "5": 32,
-    "6": 46,
-    "7": 51,
-    "8": 59,
-    "9": 68
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "February 28, 1899"
+      },
+      {
+        "t": 3154,
+        "page": 5,
+        "anchor": "March 10, 1899"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 7,
+        "anchor": "March 14, 1899"
+      },
+      {
+        "t": 541,
+        "page": 8,
+        "anchor": "March 18, 1899"
+      },
+      {
+        "t": 925,
+        "page": 8,
+        "anchor": "March 20, 1899"
+      },
+      {
+        "t": 1194,
+        "page": 9,
+        "anchor": "March 31, 1899"
+      },
+      {
+        "t": 1576,
+        "page": 10,
+        "anchor": "April 5, 1899"
+      },
+      {
+        "t": 2101,
+        "page": 11,
+        "anchor": "April 9, 1899"
+      },
+      {
+        "t": 2264,
+        "page": 11,
+        "anchor": "April 12, 1899"
+      },
+      {
+        "t": 2510,
+        "page": 12,
+        "anchor": "April 16, 1899"
+      },
+      {
+        "t": 3021,
+        "page": 12,
+        "anchor": "April 21, 1899"
+      },
+      {
+        "t": 3292,
+        "page": 13,
+        "anchor": "April 23, 1899"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "April 26, 1899"
+      },
+      {
+        "t": 983,
+        "page": 16,
+        "anchor": "May 9, 1899"
+      },
+      {
+        "t": 1505,
+        "page": 17,
+        "anchor": "May 12, 1899"
+      },
+      {
+        "t": 2096,
+        "page": 19,
+        "anchor": "May 16, 1899"
+      },
+      {
+        "t": 2531,
+        "page": 19,
+        "anchor": "May 19, 1899"
+      },
+      {
+        "t": 2883,
+        "page": 20,
+        "anchor": "May 23, 1899"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 22,
+        "anchor": "June 2, 1899"
+      },
+      {
+        "t": 393,
+        "page": 22,
+        "anchor": "June 3, 1899"
+      },
+      {
+        "t": 554,
+        "page": 23,
+        "anchor": "June 5, 1899"
+      },
+      {
+        "t": 1071,
+        "page": 25,
+        "anchor": "June 8, 1899"
+      },
+      {
+        "t": 1704,
+        "page": 26,
+        "anchor": "June 9, 1899"
+      },
+      {
+        "t": 1837,
+        "page": 26,
+        "anchor": "June 11, 1899"
+      },
+      {
+        "t": 2020,
+        "page": 27,
+        "anchor": "June 12, 1899"
+      },
+      {
+        "t": 2553,
+        "page": 28,
+        "anchor": "June 14, 1899"
+      },
+      {
+        "t": 2789,
+        "page": 29,
+        "anchor": "June 16, 1899"
+      },
+      {
+        "t": 3034,
+        "page": 30,
+        "anchor": "June 17, 1899"
+      },
+      {
+        "t": 3536,
+        "page": 31,
+        "anchor": "June 20, 1899"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 32,
+        "anchor": "June 21, 1899"
+      },
+      {
+        "t": 380,
+        "page": 33,
+        "anchor": "June 23, 1899"
+      },
+      {
+        "t": 839,
+        "page": 34,
+        "anchor": "June 25, 1899"
+      },
+      {
+        "t": 1837,
+        "page": 36,
+        "anchor": "July 18, 1899"
+      },
+      {
+        "t": 1887,
+        "page": 37,
+        "anchor": "July 22, 1899"
+      },
+      {
+        "t": 2199,
+        "page": 37,
+        "anchor": "July 28, 1899"
+      },
+      {
+        "t": 2417,
+        "page": 38,
+        "anchor": "July 30, 1899"
+      },
+      {
+        "t": 2653,
+        "page": 38,
+        "anchor": "July 31, 1899"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 40,
+        "anchor": "August 7, 1899"
+      },
+      {
+        "t": 125,
+        "page": 40,
+        "anchor": "August 8, 1899"
+      },
+      {
+        "t": 249,
+        "page": 40,
+        "anchor": "August 10, 1899"
+      },
+      {
+        "t": 788,
+        "page": 41,
+        "anchor": "August 12, 1899"
+      },
+      {
+        "t": 1020,
+        "page": 42,
+        "anchor": "August 13, 1899"
+      },
+      {
+        "t": 1119,
+        "page": 42,
+        "anchor": "August 15, 1899"
+      },
+      {
+        "t": 1843,
+        "page": 44,
+        "anchor": "August 16, 1899"
+      },
+      {
+        "t": 1926,
+        "page": 45,
+        "anchor": "August 17, 1899"
+      },
+      {
+        "t": 2242,
+        "page": 45,
+        "anchor": "August 18, 1899"
+      },
+      {
+        "t": 2582,
+        "page": 46,
+        "anchor": "August 21, 1899"
+      },
+      {
+        "t": 2717,
+        "page": 46,
+        "anchor": "August 22, 1899"
+      },
+      {
+        "t": 2863,
+        "page": 47,
+        "anchor": "August 27, 1899"
+      },
+      {
+        "t": 2994,
+        "page": 47,
+        "anchor": "August 30, 1899"
+      },
+      {
+        "t": 3360,
+        "page": 47,
+        "anchor": "August 31, 1899"
+      },
+      {
+        "t": 3480,
+        "page": 48,
+        "anchor": "September 1, 1899"
+      }
+    ],
+    "7": [
+      {
+        "t": 749,
+        "page": 51,
+        "anchor": "September 2, 1899"
+      },
+      {
+        "t": 1095,
+        "page": 51,
+        "anchor": "September 5, 1899"
+      },
+      {
+        "t": 1309,
+        "page": 52,
+        "anchor": "September 9, 1899"
+      },
+      {
+        "t": 2131,
+        "page": 53,
+        "anchor": "September 16, 1899"
+      },
+      {
+        "t": 2460,
+        "page": 53,
+        "anchor": "September 19, 1899"
+      },
+      {
+        "t": 2636,
+        "page": 64,
+        "anchor": "October 14, 1899"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 56,
+        "anchor": "September 21, 1899"
+      },
+      {
+        "t": 353,
+        "page": 56,
+        "anchor": "September 22, 1899"
+      },
+      {
+        "t": 627,
+        "page": 57,
+        "anchor": "September 25, 1899"
+      },
+      {
+        "t": 777,
+        "page": 58,
+        "anchor": "September 26, 1899"
+      },
+      {
+        "t": 1119,
+        "page": 59,
+        "anchor": "September 30, 1899"
+      },
+      {
+        "t": 1576,
+        "page": 60,
+        "anchor": "October 1, 1899"
+      },
+      {
+        "t": 2367,
+        "page": 61,
+        "anchor": "October 3, 1899"
+      },
+      {
+        "t": 3204,
+        "page": 63,
+        "anchor": "October 7, 1899"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 64,
+        "anchor": "October 14, 1899"
+      },
+      {
+        "t": 1113,
+        "page": 68,
+        "anchor": "October 16, 1899"
+      },
+      {
+        "t": 1228,
+        "page": 68,
+        "anchor": "October 21, 1899"
+      },
+      {
+        "t": 1513,
+        "page": 69,
+        "anchor": "October 22, 1899"
+      },
+      {
+        "t": 1589,
+        "page": 70,
+        "anchor": "October 24, 1899"
+      },
+      {
+        "t": 1845,
+        "page": 70,
+        "anchor": "October 25, 1899"
+      },
+      {
+        "t": 2417,
+        "page": 72,
+        "anchor": "October 29, 1899"
+      }
+    ]
   },
   "3": {
-    "1": 3,
-    "2": 9,
-    "3": 11,
-    "4": 17,
-    "5": 22,
-    "6": 24,
-    "7": 32,
-    "8": 33,
-    "9": 37,
-    "10": 40,
-    "11": 46
+    "1": [
+      {
+        "t": 826,
+        "page": 1,
+        "anchor": "November 3, 1899"
+      },
+      {
+        "t": 1014,
+        "page": 2,
+        "anchor": "November 4, 1899"
+      },
+      {
+        "t": 1267,
+        "page": 2,
+        "anchor": "November 6, 1899"
+      },
+      {
+        "t": 1785,
+        "page": 3,
+        "anchor": "November 10, 1899"
+      },
+      {
+        "t": 2037,
+        "page": 3,
+        "anchor": "November 11, 1899"
+      },
+      {
+        "t": 2254,
+        "page": 3,
+        "anchor": "November 12, 1899"
+      },
+      {
+        "t": 2498,
+        "page": 4,
+        "anchor": "November 13, 1899"
+      },
+      {
+        "t": 2868,
+        "page": 4,
+        "anchor": "November 17, 1899"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "November 19, 1899"
+      },
+      {
+        "t": 161,
+        "page": 5,
+        "anchor": "November 21, 1899"
+      },
+      {
+        "t": 340,
+        "page": 6,
+        "anchor": "November 24, 1899"
+      },
+      {
+        "t": 430,
+        "page": 6,
+        "anchor": "November 26, 1899"
+      },
+      {
+        "t": 752,
+        "page": 6,
+        "anchor": "November 27, 1899"
+      },
+      {
+        "t": 905,
+        "page": 7,
+        "anchor": "November 28, 1899"
+      },
+      {
+        "t": 1433,
+        "page": 8,
+        "anchor": "November 30, 1899"
+      },
+      {
+        "t": 1661,
+        "page": 8,
+        "anchor": "December 2, 1899"
+      },
+      {
+        "t": 2425,
+        "page": 9,
+        "anchor": "December 21, 1899"
+      },
+      {
+        "t": 2986,
+        "page": 10,
+        "anchor": "December 22, 1899"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 11,
+        "anchor": "December 27, 1899"
+      },
+      {
+        "t": 275,
+        "page": 11,
+        "anchor": "December 30, 1899"
+      },
+      {
+        "t": 1138,
+        "page": 12,
+        "anchor": "January 5, 1900"
+      },
+      {
+        "t": 1396,
+        "page": 13,
+        "anchor": "January 6, 1900"
+      },
+      {
+        "t": 1794,
+        "page": 13,
+        "anchor": "January 8, 1900"
+      },
+      {
+        "t": 2019,
+        "page": 14,
+        "anchor": "January 12, 1900"
+      },
+      {
+        "t": 3521,
+        "page": 16,
+        "anchor": "January 17, 1900"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 16,
+        "anchor": "January 22, 1900"
+      },
+      {
+        "t": 187,
+        "page": 16,
+        "anchor": "January 27, 1900"
+      },
+      {
+        "t": 626,
+        "page": 17,
+        "anchor": "January 28, 1900"
+      },
+      {
+        "t": 1107,
+        "page": 17,
+        "anchor": "January 31, 1900"
+      },
+      {
+        "t": 1781,
+        "page": 18,
+        "anchor": "February 4, 1900"
+      },
+      {
+        "t": 2182,
+        "page": 18,
+        "anchor": "February 5, 1900"
+      },
+      {
+        "t": 2427,
+        "page": 18,
+        "anchor": "February 12, 1900"
+      },
+      {
+        "t": 2668,
+        "page": 19,
+        "anchor": "February 13, 1900"
+      },
+      {
+        "t": 3152,
+        "page": 19,
+        "anchor": "February 16, 1900"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 20,
+        "anchor": "February 20, 1900"
+      },
+      {
+        "t": 168,
+        "page": 20,
+        "anchor": "February 21, 1900"
+      },
+      {
+        "t": 416,
+        "page": 21,
+        "anchor": "February 23, 1900"
+      },
+      {
+        "t": 700,
+        "page": 21,
+        "anchor": "February 24, 1900"
+      },
+      {
+        "t": 964,
+        "page": 21,
+        "anchor": "February 26, 1900"
+      },
+      {
+        "t": 1907,
+        "page": 22,
+        "anchor": "March 2, 1900"
+      },
+      {
+        "t": 2423,
+        "page": 23,
+        "anchor": "March 9, 1900"
+      },
+      {
+        "t": 2995,
+        "page": 24,
+        "anchor": "March 10, 1900"
+      },
+      {
+        "t": 3321,
+        "page": 24,
+        "anchor": "March 11, 1900"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 24,
+        "anchor": "March 14, 1900"
+      },
+      {
+        "t": 653,
+        "page": 25,
+        "anchor": "March 15, 1900"
+      },
+      {
+        "t": 1341,
+        "page": 26,
+        "anchor": "March 17, 1900"
+      },
+      {
+        "t": 1795,
+        "page": 26,
+        "anchor": "March 20, 1900"
+      },
+      {
+        "t": 2254,
+        "page": 27,
+        "anchor": "March 25, 1900"
+      },
+      {
+        "t": 3447,
+        "page": 28,
+        "anchor": "April 9, 1900"
+      }
+    ],
+    "7": [
+      {
+        "t": 379,
+        "page": 29,
+        "anchor": "April 16, 1900"
+      },
+      {
+        "t": 978,
+        "page": 29,
+        "anchor": "April 20, 1900"
+      },
+      {
+        "t": 1271,
+        "page": 29,
+        "anchor": "April 21, 1900"
+      },
+      {
+        "t": 1482,
+        "page": 30,
+        "anchor": "April 23, 1900"
+      },
+      {
+        "t": 1657,
+        "page": 30,
+        "anchor": "April 24, 1900"
+      },
+      {
+        "t": 2248,
+        "page": 31,
+        "anchor": "April 25, 1900"
+      },
+      {
+        "t": 3251,
+        "page": 32,
+        "anchor": "May 9, 1900"
+      },
+      {
+        "t": 3615,
+        "page": 32,
+        "anchor": "May 13, 1900"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 32,
+        "anchor": "May 17, 1900"
+      },
+      {
+        "t": 175,
+        "page": 33,
+        "anchor": "May 18, 1900"
+      },
+      {
+        "t": 420,
+        "page": 33,
+        "anchor": "May 20, 1900"
+      },
+      {
+        "t": 1694,
+        "page": 34,
+        "anchor": "May 21, 1900"
+      },
+      {
+        "t": 3313,
+        "page": 35,
+        "anchor": "May 27, 1900"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 35,
+        "anchor": "May 29, 1900"
+      },
+      {
+        "t": 1549,
+        "page": 38,
+        "anchor": "June 10, 1900"
+      },
+      {
+        "t": 1706,
+        "page": 38,
+        "anchor": "June 12, 1900"
+      },
+      {
+        "t": 2141,
+        "page": 39,
+        "anchor": "June 14, 1900"
+      },
+      {
+        "t": 2389,
+        "page": 39,
+        "anchor": "June 17, 1900"
+      },
+      {
+        "t": 2648,
+        "page": 39,
+        "anchor": "June 18, 1900"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 40,
+        "anchor": "June 20, 1900"
+      },
+      {
+        "t": 476,
+        "page": 40,
+        "anchor": "June 24, 1900"
+      },
+      {
+        "t": 974,
+        "page": 41,
+        "anchor": "June 27, 1900"
+      },
+      {
+        "t": 1437,
+        "page": 42,
+        "anchor": "June 28, 1900"
+      },
+      {
+        "t": 1662,
+        "page": 42,
+        "anchor": "June 29, 1900"
+      },
+      {
+        "t": 2282,
+        "page": 43,
+        "anchor": "July 9, 1900"
+      },
+      {
+        "t": 2522,
+        "page": 44,
+        "anchor": "July 10, 1900"
+      },
+      {
+        "t": 2900,
+        "page": 44,
+        "anchor": "July 11, 1900"
+      },
+      {
+        "t": 3200,
+        "page": 45,
+        "anchor": "July 14, 1900"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 45,
+        "anchor": "July 16, 1900"
+      },
+      {
+        "t": 463,
+        "page": 46,
+        "anchor": "July 18, 1900"
+      },
+      {
+        "t": 561,
+        "page": 46,
+        "anchor": "July 19, 1900"
+      },
+      {
+        "t": 733,
+        "page": 46,
+        "anchor": "July 21, 1900"
+      },
+      {
+        "t": 1101,
+        "page": 47,
+        "anchor": "July 25, 1900"
+      },
+      {
+        "t": 1695,
+        "page": 48,
+        "anchor": "July 30, 1900"
+      },
+      {
+        "t": 2863,
+        "page": 50,
+        "anchor": "August 19, 1900"
+      },
+      {
+        "t": 3100,
+        "page": 50,
+        "anchor": "August 20, 1900"
+      },
+      {
+        "t": 3259,
+        "page": 51,
+        "anchor": "August 30, 1900"
+      },
+      {
+        "t": 3393,
+        "page": 51,
+        "anchor": "August 31, 1900"
+      }
+    ]
   },
   "4": {
-    "1": 3,
-    "2": 7,
-    "3": 10,
-    "4": 18,
-    "5": 21,
-    "6": 26,
-    "7": 31,
-    "8": 37,
-    "9": 39,
-    "10": 44,
-    "11": 50,
-    "12": 55,
-    "13": 66,
-    "14": 73
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "September 5, 1900"
+      },
+      {
+        "t": 1354,
+        "page": 2,
+        "anchor": "September 10, 1900"
+      },
+      {
+        "t": 1820,
+        "page": 2,
+        "anchor": "September 12, 1900"
+      },
+      {
+        "t": 2370,
+        "page": 3,
+        "anchor": "September 14, 1900"
+      },
+      {
+        "t": 2624,
+        "page": 3,
+        "anchor": "September 16, 1900"
+      },
+      {
+        "t": 2714,
+        "page": 3,
+        "anchor": "September 18, 1900"
+      },
+      {
+        "t": 3248,
+        "page": 4,
+        "anchor": "September 19, 1900"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "September 21, 1900"
+      },
+      {
+        "t": 320,
+        "page": 5,
+        "anchor": "September 22, 1900"
+      },
+      {
+        "t": 538,
+        "page": 6,
+        "anchor": "September 29, 1900"
+      },
+      {
+        "t": 922,
+        "page": 6,
+        "anchor": "October 2, 1900"
+      },
+      {
+        "t": 1329,
+        "page": 7,
+        "anchor": "October 4, 1900"
+      },
+      {
+        "t": 1884,
+        "page": 7,
+        "anchor": "October 10, 1900"
+      },
+      {
+        "t": 3106,
+        "page": 9,
+        "anchor": "October 12, 1900"
+      },
+      {
+        "t": 3373,
+        "page": 9,
+        "anchor": "October 14, 1900"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "October 15, 1900"
+      },
+      {
+        "t": 569,
+        "page": 11,
+        "anchor": "October 17, 1900"
+      },
+      {
+        "t": 751,
+        "page": 11,
+        "anchor": "October 20, 1900"
+      },
+      {
+        "t": 876,
+        "page": 11,
+        "anchor": "October 22, 1900"
+      },
+      {
+        "t": 1191,
+        "page": 12,
+        "anchor": "October 23, 1900"
+      },
+      {
+        "t": 1367,
+        "page": 12,
+        "anchor": "October 29, 1900"
+      },
+      {
+        "t": 1572,
+        "page": 12,
+        "anchor": "October 31, 1900"
+      },
+      {
+        "t": 2750,
+        "page": 14,
+        "anchor": "November 11, 1900"
+      },
+      {
+        "t": 3018,
+        "page": 14,
+        "anchor": "November 13, 1900"
+      },
+      {
+        "t": 3191,
+        "page": 15,
+        "anchor": "November 14, 1900"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 16,
+        "anchor": "November 16, 1900"
+      },
+      {
+        "t": 541,
+        "page": 16,
+        "anchor": "November 18, 1900"
+      },
+      {
+        "t": 807,
+        "page": 16,
+        "anchor": "November 20, 1900"
+      },
+      {
+        "t": 1510,
+        "page": 17,
+        "anchor": "November 22, 1900"
+      },
+      {
+        "t": 1660,
+        "page": 17,
+        "anchor": "November 23, 1900"
+      },
+      {
+        "t": 2003,
+        "page": 18,
+        "anchor": "November 25, 1900"
+      },
+      {
+        "t": 2132,
+        "page": 18,
+        "anchor": "December 3, 1900"
+      },
+      {
+        "t": 2631,
+        "page": 19,
+        "anchor": "December 23, 1900"
+      },
+      {
+        "t": 2904,
+        "page": 19,
+        "anchor": "December 25, 1900"
+      },
+      {
+        "t": 3414,
+        "page": 20,
+        "anchor": "December 26, 1900"
+      },
+      {
+        "t": 3459,
+        "page": 20,
+        "anchor": "December 27, 1900"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 21,
+        "anchor": "January 5, 1901"
+      },
+      {
+        "t": 439,
+        "page": 21,
+        "anchor": "January 6, 1901"
+      },
+      {
+        "t": 771,
+        "page": 22,
+        "anchor": "January 9, 1901"
+      },
+      {
+        "t": 939,
+        "page": 22,
+        "anchor": "January 15, 1901"
+      },
+      {
+        "t": 1133,
+        "page": 23,
+        "anchor": "January 16, 1901"
+      },
+      {
+        "t": 1498,
+        "page": 23,
+        "anchor": "January 24, 1901"
+      },
+      {
+        "t": 1739,
+        "page": 24,
+        "anchor": "January 27, 1901"
+      },
+      {
+        "t": 1814,
+        "page": 24,
+        "anchor": "January 30, 1901"
+      },
+      {
+        "t": 2100,
+        "page": 24,
+        "anchor": "January 31, 1901"
+      },
+      {
+        "t": 2393,
+        "page": 25,
+        "anchor": "February 5, 1901"
+      },
+      {
+        "t": 2682,
+        "page": 25,
+        "anchor": "February 6, 1901"
+      },
+      {
+        "t": 2829,
+        "page": 25,
+        "anchor": "February 10, 1901"
+      },
+      {
+        "t": 3286,
+        "page": 26,
+        "anchor": "February 17, 1901"
+      },
+      {
+        "t": 3462,
+        "page": 26,
+        "anchor": "March 8, 1901"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 26,
+        "anchor": "March 19, 1901"
+      },
+      {
+        "t": 261,
+        "page": 26,
+        "anchor": "March 22, 1901"
+      },
+      {
+        "t": 709,
+        "page": 27,
+        "anchor": "March 30, 1901"
+      },
+      {
+        "t": 950,
+        "page": 27,
+        "anchor": "March 31, 1901"
+      },
+      {
+        "t": 1451,
+        "page": 27,
+        "anchor": "April 5, 1901"
+      },
+      {
+        "t": 2246,
+        "page": 28,
+        "anchor": "April 9, 1901"
+      },
+      {
+        "t": 2743,
+        "page": 29,
+        "anchor": "April 19, 1901"
+      },
+      {
+        "t": 3227,
+        "page": 29,
+        "anchor": "April 21, 1901"
+      },
+      {
+        "t": 3420,
+        "page": 30,
+        "anchor": "April 22, 1901"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 30,
+        "anchor": "June 13, 1901"
+      },
+      {
+        "t": 145,
+        "page": 30,
+        "anchor": "June 18, 1901"
+      },
+      {
+        "t": 1003,
+        "page": 31,
+        "anchor": "July 5, 1901"
+      },
+      {
+        "t": 1043,
+        "page": 31,
+        "anchor": "July 16, 1901"
+      },
+      {
+        "t": 2010,
+        "page": 32,
+        "anchor": "July 20, 1901"
+      },
+      {
+        "t": 2246,
+        "page": 32,
+        "anchor": "July 27, 1901"
+      },
+      {
+        "t": 2478,
+        "page": 33,
+        "anchor": "July 30, 1901"
+      },
+      {
+        "t": 2726,
+        "page": 33,
+        "anchor": "August 3, 1901"
+      },
+      {
+        "t": 3008,
+        "page": 33,
+        "anchor": "August 5, 1901"
+      },
+      {
+        "t": 3054,
+        "page": 34,
+        "anchor": "August 6, 1901"
+      },
+      {
+        "t": 3399,
+        "page": 34,
+        "anchor": "August 21, 1901"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 34,
+        "anchor": "September 2, 1901"
+      },
+      {
+        "t": 441,
+        "page": 35,
+        "anchor": "September 4, 1901"
+      },
+      {
+        "t": 879,
+        "page": 35,
+        "anchor": "September 5, 1901"
+      },
+      {
+        "t": 1252,
+        "page": 36,
+        "anchor": "September 9, 1901"
+      },
+      {
+        "t": 1716,
+        "page": 36,
+        "anchor": "September 10, 1901"
+      },
+      {
+        "t": 1986,
+        "page": 36,
+        "anchor": "September 14, 1901"
+      },
+      {
+        "t": 2627,
+        "page": 37,
+        "anchor": "September 15, 1901"
+      },
+      {
+        "t": 3569,
+        "page": 38,
+        "anchor": "October 3, 1901"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 38,
+        "anchor": "October 8, 1901"
+      },
+      {
+        "t": 303,
+        "page": 39,
+        "anchor": "October 11, 1901"
+      },
+      {
+        "t": 615,
+        "page": 39,
+        "anchor": "October 14, 1901"
+      },
+      {
+        "t": 1196,
+        "page": 40,
+        "anchor": "October 21, 1901"
+      },
+      {
+        "t": 1318,
+        "page": 40,
+        "anchor": "October 25, 1901"
+      },
+      {
+        "t": 1612,
+        "page": 41,
+        "anchor": "November 22, 1901"
+      },
+      {
+        "t": 1839,
+        "page": 41,
+        "anchor": "December 27, 1901"
+      },
+      {
+        "t": 2253,
+        "page": 42,
+        "anchor": "December 29, 1901"
+      },
+      {
+        "t": 2908,
+        "page": 42,
+        "anchor": "January 11, 1902"
+      },
+      {
+        "t": 3215,
+        "page": 43,
+        "anchor": "January 12, 1902"
+      },
+      {
+        "t": 3412,
+        "page": 43,
+        "anchor": "January 14, 1902"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 43,
+        "anchor": "January 25, 1902"
+      },
+      {
+        "t": 197,
+        "page": 44,
+        "anchor": "January 26, 1902"
+      },
+      {
+        "t": 336,
+        "page": 44,
+        "anchor": "February 3, 1902"
+      },
+      {
+        "t": 725,
+        "page": 45,
+        "anchor": "February 8, 1902"
+      },
+      {
+        "t": 924,
+        "page": 45,
+        "anchor": "February 9, 1902"
+      },
+      {
+        "t": 1162,
+        "page": 45,
+        "anchor": "February 17, 1902"
+      },
+      {
+        "t": 1381,
+        "page": 46,
+        "anchor": "February 19, 1902"
+      },
+      {
+        "t": 1675,
+        "page": 46,
+        "anchor": "February 21, 1902"
+      },
+      {
+        "t": 2064,
+        "page": 46,
+        "anchor": "February 24, 1902"
+      },
+      {
+        "t": 2490,
+        "page": 47,
+        "anchor": "March 2, 1902"
+      },
+      {
+        "t": 2731,
+        "page": 47,
+        "anchor": "March 3, 1902"
+      },
+      {
+        "t": 2846,
+        "page": 47,
+        "anchor": "March 5, 1902"
+      },
+      {
+        "t": 3034,
+        "page": 48,
+        "anchor": "March 6, 1902"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 49,
+        "anchor": "March 16, 1902"
+      },
+      {
+        "t": 182,
+        "page": 49,
+        "anchor": "March 18, 1902"
+      },
+      {
+        "t": 362,
+        "page": 49,
+        "anchor": "March 19, 1902"
+      },
+      {
+        "t": 462,
+        "page": 50,
+        "anchor": "March 23, 1902"
+      },
+      {
+        "t": 606,
+        "page": 50,
+        "anchor": "March 27, 1902"
+      },
+      {
+        "t": 783,
+        "page": 50,
+        "anchor": "March 30, 1902"
+      },
+      {
+        "t": 943,
+        "page": 50,
+        "anchor": "April 4, 1902"
+      },
+      {
+        "t": 1491,
+        "page": 51,
+        "anchor": "April 25, 1902"
+      },
+      {
+        "t": 1637,
+        "page": 51,
+        "anchor": "April 29, 1902"
+      },
+      {
+        "t": 2070,
+        "page": 52,
+        "anchor": "May 22, 1902"
+      },
+      {
+        "t": 2550,
+        "page": 53,
+        "anchor": "June 15, 1902"
+      },
+      {
+        "t": 2779,
+        "page": 53,
+        "anchor": "June 17, 1902"
+      },
+      {
+        "t": 2825,
+        "page": 53,
+        "anchor": "June 29, 1902"
+      },
+      {
+        "t": 3200,
+        "page": 54,
+        "anchor": "July 3, 1902"
+      },
+      {
+        "t": 3354,
+        "page": 54,
+        "anchor": "July 7, 1902"
+      }
+    ],
+    "12": [
+      {
+        "t": 123,
+        "page": 55,
+        "anchor": "July 31, 1902"
+      },
+      {
+        "t": 230,
+        "page": 55,
+        "anchor": "August 2, 1902"
+      },
+      {
+        "t": 367,
+        "page": 55,
+        "anchor": "August 10, 1902"
+      },
+      {
+        "t": 522,
+        "page": 56,
+        "anchor": "September 3, 1902"
+      },
+      {
+        "t": 721,
+        "page": 56,
+        "anchor": "September 4, 1902"
+      },
+      {
+        "t": 1007,
+        "page": 56,
+        "anchor": "September 5, 1902"
+      },
+      {
+        "t": 1263,
+        "page": 57,
+        "anchor": "September 10, 1902"
+      },
+      {
+        "t": 1370,
+        "page": 57,
+        "anchor": "October 22, 1902"
+      },
+      {
+        "t": 1452,
+        "page": 57,
+        "anchor": "October 30, 1902"
+      },
+      {
+        "t": 2012,
+        "page": 58,
+        "anchor": "November 5, 1902"
+      },
+      {
+        "t": 2253,
+        "page": 58,
+        "anchor": "November 9, 1902"
+      },
+      {
+        "t": 2547,
+        "page": 58,
+        "anchor": "November 16, 1902"
+      },
+      {
+        "t": 3064,
+        "page": 59,
+        "anchor": "November 17, 1902"
+      }
+    ],
+    "13": [
+      {
+        "t": 0,
+        "page": 60,
+        "anchor": "November 21, 1902"
+      },
+      {
+        "t": 473,
+        "page": 60,
+        "anchor": "November 22, 1902"
+      },
+      {
+        "t": 848,
+        "page": 61,
+        "anchor": "November 30, 1902"
+      },
+      {
+        "t": 1089,
+        "page": 61,
+        "anchor": "December 3, 1902"
+      },
+      {
+        "t": 1365,
+        "page": 62,
+        "anchor": "December 4, 1902"
+      },
+      {
+        "t": 1876,
+        "page": 62,
+        "anchor": "December 5, 1902"
+      },
+      {
+        "t": 2443,
+        "page": 63,
+        "anchor": "December 8, 1902"
+      },
+      {
+        "t": 2735,
+        "page": 64,
+        "anchor": "December 9, 1902"
+      },
+      {
+        "t": 2958,
+        "page": 64,
+        "anchor": "December 15, 1902"
+      },
+      {
+        "t": 3331,
+        "page": 65,
+        "anchor": "December 17, 1902"
+      },
+      {
+        "t": 3680,
+        "page": 65,
+        "anchor": "December 18, 1902"
+      },
+      {
+        "t": 4162,
+        "page": 66,
+        "anchor": "December 24, 1902"
+      }
+    ],
+    "14": [
+      {
+        "t": 0,
+        "page": 66,
+        "anchor": "December 26, 1902"
+      },
+      {
+        "t": 432,
+        "page": 67,
+        "anchor": "December 30, 1902"
+      },
+      {
+        "t": 1067,
+        "page": 67,
+        "anchor": "December 31, 1902"
+      },
+      {
+        "t": 1513,
+        "page": 68,
+        "anchor": "January 5, 1903"
+      },
+      {
+        "t": 1764,
+        "page": 68,
+        "anchor": "January 7, 1903"
+      },
+      {
+        "t": 2039,
+        "page": 69,
+        "anchor": "January 9, 1903"
+      },
+      {
+        "t": 2259,
+        "page": 69,
+        "anchor": "January 10, 1903"
+      },
+      {
+        "t": 2334,
+        "page": 69,
+        "anchor": "January 11, 1903"
+      },
+      {
+        "t": 2385,
+        "page": 69,
+        "anchor": "January 13, 1903"
+      },
+      {
+        "t": 2784,
+        "page": 70,
+        "anchor": "January 31, 1903"
+      },
+      {
+        "t": 2902,
+        "page": 70,
+        "anchor": "February 1, 1903"
+      },
+      {
+        "t": 3023,
+        "page": 70,
+        "anchor": "February 9, 1903"
+      },
+      {
+        "t": 3134,
+        "page": 71,
+        "anchor": "February 22, 1903"
+      },
+      {
+        "t": 3377,
+        "page": 71,
+        "anchor": "February 23, 1903"
+      },
+      {
+        "t": 3565,
+        "page": 71,
+        "anchor": "March 5, 1903"
+      },
+      {
+        "t": 3867,
+        "page": 72,
+        "anchor": "March 6, 1903"
+      },
+      {
+        "t": 4087,
+        "page": 73,
+        "anchor": "March 9, 1903"
+      },
+      {
+        "t": 4508,
+        "page": 73,
+        "anchor": "March 12, 1903"
+      },
+      {
+        "t": 4725,
+        "page": 73,
+        "anchor": "March 18, 1903"
+      }
+    ]
   },
   "5": {
-    "1": 2,
-    "2": 5,
-    "3": 10
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "March 19, 1903"
+      },
+      {
+        "t": 157,
+        "page": 2,
+        "anchor": "March 20, 1903"
+      },
+      {
+        "t": 201,
+        "page": 2,
+        "anchor": "March 23, 1903"
+      },
+      {
+        "t": 894,
+        "page": 3,
+        "anchor": "April 7, 1903"
+      },
+      {
+        "t": 1502,
+        "page": 3,
+        "anchor": "April 10, 1903"
+      },
+      {
+        "t": 1785,
+        "page": 3,
+        "anchor": "April 21, 1903"
+      },
+      {
+        "t": 2149,
+        "page": 4,
+        "anchor": "May 8, 1903"
+      },
+      {
+        "t": 2518,
+        "page": 4,
+        "anchor": "May 11, 1903"
+      },
+      {
+        "t": 2693,
+        "page": 4,
+        "anchor": "May 20, 1903"
+      },
+      {
+        "t": 2980,
+        "page": 4,
+        "anchor": "June 6, 1903"
+      },
+      {
+        "t": 3469,
+        "page": 5,
+        "anchor": "June 15, 1903"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "June 16, 1903"
+      },
+      {
+        "t": 452,
+        "page": 6,
+        "anchor": "June 30, 1903"
+      },
+      {
+        "t": 869,
+        "page": 6,
+        "anchor": "July 3, 1903"
+      },
+      {
+        "t": 1227,
+        "page": 7,
+        "anchor": "August 3, 1903"
+      },
+      {
+        "t": 2303,
+        "page": 7,
+        "anchor": "October 3, 1903"
+      },
+      {
+        "t": 2673,
+        "page": 8,
+        "anchor": "October 7, 1903"
+      },
+      {
+        "t": 2962,
+        "page": 8,
+        "anchor": "October 12, 1903"
+      },
+      {
+        "t": 3427,
+        "page": 9,
+        "anchor": "October 16, 1903"
+      }
+    ],
+    "3": [
+      {
+        "t": 12,
+        "page": 9,
+        "anchor": "October 18, 1903"
+      },
+      {
+        "t": 191,
+        "page": 9,
+        "anchor": "October 24, 1903"
+      },
+      {
+        "t": 698,
+        "page": 10,
+        "anchor": "October 25, 1903"
+      },
+      {
+        "t": 1444,
+        "page": 11,
+        "anchor": "October 27, 1903"
+      },
+      {
+        "t": 1646,
+        "page": 11,
+        "anchor": "October 29, 1903"
+      },
+      {
+        "t": 1855,
+        "page": 12,
+        "anchor": "October 30, 1903"
+      }
+    ]
   },
   "6": {
-    "1": 2,
-    "2": 5,
-    "3": 13,
-    "4": 17,
-    "5": 22,
-    "6": 23,
-    "7": 26,
-    "8": 28,
-    "9": 33,
-    "11": 38
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "November 1, 1903"
+      },
+      {
+        "t": 242,
+        "page": 1,
+        "anchor": "November 8, 1903"
+      },
+      {
+        "t": 576,
+        "page": 1,
+        "anchor": "November 16, 1903"
+      },
+      {
+        "t": 908,
+        "page": 2,
+        "anchor": "November 23, 1903"
+      },
+      {
+        "t": 1479,
+        "page": 2,
+        "anchor": "December 5, 1903"
+      },
+      {
+        "t": 1884,
+        "page": 3,
+        "anchor": "December 10, 1903"
+      },
+      {
+        "t": 2134,
+        "page": 3,
+        "anchor": "December 17, 1903"
+      },
+      {
+        "t": 2364,
+        "page": 3,
+        "anchor": "December 21, 1903"
+      },
+      {
+        "t": 2563,
+        "page": 3,
+        "anchor": "December 22, 1903"
+      },
+      {
+        "t": 3185,
+        "page": 4,
+        "anchor": "December 24, 1903"
+      },
+      {
+        "t": 3481,
+        "page": 4,
+        "anchor": "December 28, 1903"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 4,
+        "anchor": "January 6, 1904"
+      },
+      {
+        "t": 283,
+        "page": 5,
+        "anchor": "February 7, 1904"
+      },
+      {
+        "t": 1093,
+        "page": 5,
+        "anchor": "February 12, 1904"
+      },
+      {
+        "t": 1351,
+        "page": 6,
+        "anchor": "February 21, 1904"
+      },
+      {
+        "t": 1479,
+        "page": 6,
+        "anchor": "February 22, 1904"
+      },
+      {
+        "t": 1677,
+        "page": 6,
+        "anchor": "March 4, 1904"
+      },
+      {
+        "t": 1879,
+        "page": 7,
+        "anchor": "March 5, 1904"
+      },
+      {
+        "t": 2112,
+        "page": 7,
+        "anchor": "March 12, 1904"
+      },
+      {
+        "t": 2301,
+        "page": 7,
+        "anchor": "March 14, 1904"
+      },
+      {
+        "t": 2424,
+        "page": 7,
+        "anchor": "March 16, 1904"
+      },
+      {
+        "t": 2874,
+        "page": 8,
+        "anchor": "March 20, 1904"
+      },
+      {
+        "t": 3003,
+        "page": 8,
+        "anchor": "April 9, 1904"
+      },
+      {
+        "t": 3355,
+        "page": 8,
+        "anchor": "April 10, 1904"
+      },
+      {
+        "t": 3501,
+        "page": 9,
+        "anchor": "April 11, 1904"
+      },
+      {
+        "t": 3792,
+        "page": 9,
+        "anchor": "April 12, 1904"
+      },
+      {
+        "t": 3918,
+        "page": 9,
+        "anchor": "April 14, 1904"
+      },
+      {
+        "t": 4164,
+        "page": 9,
+        "anchor": "April 16, 1904"
+      },
+      {
+        "t": 4638,
+        "page": 10,
+        "anchor": "April 21, 1904"
+      },
+      {
+        "t": 4785,
+        "page": 10,
+        "anchor": "April 26, 1904"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 11,
+        "anchor": "April 29, 1904"
+      },
+      {
+        "t": 449,
+        "page": 11,
+        "anchor": "May 1, 1904"
+      },
+      {
+        "t": 579,
+        "page": 12,
+        "anchor": "May 28, 1904"
+      },
+      {
+        "t": 1277,
+        "page": 12,
+        "anchor": "June 3, 1904"
+      },
+      {
+        "t": 1841,
+        "page": 13,
+        "anchor": "June 10, 1904"
+      },
+      {
+        "t": 2493,
+        "page": 13,
+        "anchor": "June 17, 1904"
+      },
+      {
+        "t": 2674,
+        "page": 13,
+        "anchor": "June 19, 1904"
+      },
+      {
+        "t": 2901,
+        "page": 14,
+        "anchor": "June 20, 1904"
+      },
+      {
+        "t": 3076,
+        "page": 14,
+        "anchor": "June 29, 1904"
+      },
+      {
+        "t": 3243,
+        "page": 14,
+        "anchor": "July 14, 1904"
+      },
+      {
+        "t": 3475,
+        "page": 14,
+        "anchor": "July 22, 1904"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 15,
+        "anchor": "July 27, 1904"
+      },
+      {
+        "t": 352,
+        "page": 15,
+        "anchor": "July 28, 1904"
+      },
+      {
+        "t": 561,
+        "page": 15,
+        "anchor": "July 29, 1904"
+      },
+      {
+        "t": 777,
+        "page": 15,
+        "anchor": "July 30, 1904"
+      },
+      {
+        "t": 1068,
+        "page": 16,
+        "anchor": "July 31, 1904"
+      },
+      {
+        "t": 1411,
+        "page": 16,
+        "anchor": "August 4, 1904"
+      },
+      {
+        "t": 1898,
+        "page": 16,
+        "anchor": "August 5, 1904"
+      },
+      {
+        "t": 2705,
+        "page": 17,
+        "anchor": "August 8, 1904"
+      },
+      {
+        "t": 3144,
+        "page": 18,
+        "anchor": "August 9, 1904"
+      },
+      {
+        "t": 3599,
+        "page": 18,
+        "anchor": "August 12, 1904"
+      }
+    ],
+    "5": [
+      {
+        "t": 482,
+        "page": 19,
+        "anchor": "August 23, 1904"
+      },
+      {
+        "t": 578,
+        "page": 19,
+        "anchor": "September 2, 1904"
+      },
+      {
+        "t": 792,
+        "page": 19,
+        "anchor": "September 7, 1904"
+      },
+      {
+        "t": 917,
+        "page": 20,
+        "anchor": "September 8, 1904"
+      },
+      {
+        "t": 1032,
+        "page": 20,
+        "anchor": "September 9, 1904"
+      },
+      {
+        "t": 1191,
+        "page": 20,
+        "anchor": "September 13, 1904"
+      },
+      {
+        "t": 1383,
+        "page": 20,
+        "anchor": "September 26, 1904"
+      },
+      {
+        "t": 1741,
+        "page": 21,
+        "anchor": "September 27, 1904"
+      },
+      {
+        "t": 1868,
+        "page": 21,
+        "anchor": "September 28, 1904"
+      },
+      {
+        "t": 1926,
+        "page": 21,
+        "anchor": "October 17, 1904"
+      },
+      {
+        "t": 2057,
+        "page": 21,
+        "anchor": "October 20, 1904"
+      },
+      {
+        "t": 2146,
+        "page": 22,
+        "anchor": "October 25, 1904"
+      },
+      {
+        "t": 2226,
+        "page": 22,
+        "anchor": "October 27, 1904"
+      },
+      {
+        "t": 2480,
+        "page": 22,
+        "anchor": "October 29, 1904"
+      },
+      {
+        "t": 2677,
+        "page": 22,
+        "anchor": "November 13, 1904"
+      }
+    ],
+    "6": [
+      {
+        "t": 141,
+        "page": 23,
+        "anchor": "November 18, 1904"
+      },
+      {
+        "t": 357,
+        "page": 23,
+        "anchor": "November 24, 1904"
+      },
+      {
+        "t": 458,
+        "page": 24,
+        "anchor": "November 29, 1904"
+      },
+      {
+        "t": 911,
+        "page": 24,
+        "anchor": "December 4, 1904"
+      },
+      {
+        "t": 1151,
+        "page": 25,
+        "anchor": "December 6, 1904"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 25,
+        "anchor": "December 22, 1904"
+      },
+      {
+        "t": 201,
+        "page": 25,
+        "anchor": "December 29, 1904"
+      },
+      {
+        "t": 516,
+        "page": 25,
+        "anchor": "January 21, 1905"
+      },
+      {
+        "t": 918,
+        "page": 26,
+        "anchor": "February 8, 1905"
+      },
+      {
+        "t": 1004,
+        "page": 26,
+        "anchor": "February 10, 1905"
+      },
+      {
+        "t": 1222,
+        "page": 26,
+        "anchor": "February 24, 1905"
+      },
+      {
+        "t": 1702,
+        "page": 26,
+        "anchor": "March 5, 1905"
+      },
+      {
+        "t": 1729,
+        "page": 27,
+        "anchor": "March 20, 1905"
+      },
+      {
+        "t": 2028,
+        "page": 27,
+        "anchor": "March 23, 1905"
+      },
+      {
+        "t": 2156,
+        "page": 27,
+        "anchor": "March 28, 1905"
+      },
+      {
+        "t": 2466,
+        "page": 27,
+        "anchor": "April 11, 1905"
+      },
+      {
+        "t": 3057,
+        "page": 27,
+        "anchor": "April 16, 1905"
+      },
+      {
+        "t": 3233,
+        "page": 28,
+        "anchor": "April 20, 1905"
+      }
+    ],
+    "8": [
+      {
+        "t": 6,
+        "page": 28,
+        "anchor": "May 2, 1905"
+      },
+      {
+        "t": 101,
+        "page": 28,
+        "anchor": "May 5, 1905"
+      },
+      {
+        "t": 238,
+        "page": 28,
+        "anchor": "May 9, 1905"
+      },
+      {
+        "t": 523,
+        "page": 28,
+        "anchor": "May 12, 1905"
+      },
+      {
+        "t": 677,
+        "page": 29,
+        "anchor": "May 15, 1905"
+      },
+      {
+        "t": 897,
+        "page": 29,
+        "anchor": "May 18, 1905"
+      },
+      {
+        "t": 1071,
+        "page": 29,
+        "anchor": "May 20, 1905"
+      },
+      {
+        "t": 1935,
+        "page": 30,
+        "anchor": "May 29, 1905"
+      },
+      {
+        "t": 2028,
+        "page": 30,
+        "anchor": "May 30, 1905"
+      },
+      {
+        "t": 2830,
+        "page": 30,
+        "anchor": "June 5, 1905"
+      },
+      {
+        "t": 3114,
+        "page": 31,
+        "anchor": "June 23, 1905"
+      },
+      {
+        "t": 3449,
+        "page": 31,
+        "anchor": "July 3, 1905"
+      },
+      {
+        "t": 3852,
+        "page": 31,
+        "anchor": "July 5, 1905"
+      },
+      {
+        "t": 3984,
+        "page": 31,
+        "anchor": "July 18, 1905"
+      },
+      {
+        "t": 4088,
+        "page": 32,
+        "anchor": "July 20, 1905"
+      },
+      {
+        "t": 4366,
+        "page": 32,
+        "anchor": "July 22, 1905"
+      }
+    ],
+    "9": [
+      {
+        "t": 6,
+        "page": 32,
+        "anchor": "August 9, 1905"
+      },
+      {
+        "t": 209,
+        "page": 32,
+        "anchor": "August 17, 1905"
+      },
+      {
+        "t": 360,
+        "page": 32,
+        "anchor": "August 20, 1905"
+      },
+      {
+        "t": 599,
+        "page": 33,
+        "anchor": "August 22, 1905"
+      },
+      {
+        "t": 787,
+        "page": 33,
+        "anchor": "August 23, 1905"
+      },
+      {
+        "t": 948,
+        "page": 33,
+        "anchor": "August 25, 1905"
+      },
+      {
+        "t": 1417,
+        "page": 34,
+        "anchor": "August 28, 1905"
+      },
+      {
+        "t": 1591,
+        "page": 34,
+        "anchor": "September 4, 1905"
+      },
+      {
+        "t": 2175,
+        "page": 34,
+        "anchor": "September 6, 1905"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 35,
+        "anchor": "September 8, 1905"
+      },
+      {
+        "t": 248,
+        "page": 35,
+        "anchor": "September 17, 1905"
+      },
+      {
+        "t": 583,
+        "page": 35,
+        "anchor": "October 10, 1905"
+      },
+      {
+        "t": 869,
+        "page": 35,
+        "anchor": "October 12, 1905"
+      },
+      {
+        "t": 1265,
+        "page": 36,
+        "anchor": "October 16, 1905"
+      },
+      {
+        "t": 2004,
+        "page": 36,
+        "anchor": "October 18, 1905"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 36,
+        "anchor": "October 20, 1905"
+      },
+      {
+        "t": 158,
+        "page": 36,
+        "anchor": "October 24, 1905"
+      },
+      {
+        "t": 442,
+        "page": 37,
+        "anchor": "November 2, 1905"
+      },
+      {
+        "t": 714,
+        "page": 37,
+        "anchor": "November 6, 1905"
+      },
+      {
+        "t": 997,
+        "page": 37,
+        "anchor": "November 8, 1905"
+      },
+      {
+        "t": 1189,
+        "page": 37,
+        "anchor": "December 12, 1905"
+      },
+      {
+        "t": 1298,
+        "page": 38,
+        "anchor": "December 15, 1905"
+      },
+      {
+        "t": 1565,
+        "page": 38,
+        "anchor": "January 6, 1906"
+      },
+      {
+        "t": 1705,
+        "page": 38,
+        "anchor": "January 14, 1906"
+      },
+      {
+        "t": 1886,
+        "page": 38,
+        "anchor": "January 16, 1906"
+      }
+    ]
   },
   "7": {
-    "1": 4,
-    "2": 5,
-    "3": 8,
-    "4": 13,
-    "5": 16,
-    "6": 18
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "January 30, 1906"
+      },
+      {
+        "t": 257,
+        "page": 1,
+        "anchor": "February 9, 1906"
+      },
+      {
+        "t": 359,
+        "page": 1,
+        "anchor": "February 12, 1906"
+      },
+      {
+        "t": 864,
+        "page": 1,
+        "anchor": "February 23, 1906"
+      },
+      {
+        "t": 1160,
+        "page": 2,
+        "anchor": "February 28, 1906"
+      },
+      {
+        "t": 1790,
+        "page": 2,
+        "anchor": "March 4, 1906"
+      },
+      {
+        "t": 2675,
+        "page": 3,
+        "anchor": "March 13, 1906"
+      },
+      {
+        "t": 3014,
+        "page": 3,
+        "anchor": "April 17, 1906"
+      },
+      {
+        "t": 3445,
+        "page": 3,
+        "anchor": "April 25, 1906"
+      },
+      {
+        "t": 3858,
+        "page": 4,
+        "anchor": "April 26, 1906"
+      },
+      {
+        "t": 4497,
+        "page": 4,
+        "anchor": "April 29, 1906"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 4,
+        "anchor": "May 4, 1906"
+      },
+      {
+        "t": 1121,
+        "page": 5,
+        "anchor": "May 7, 1906"
+      },
+      {
+        "t": 1483,
+        "page": 5,
+        "anchor": "May 15, 1906"
+      },
+      {
+        "t": 1599,
+        "page": 5,
+        "anchor": "May 18, 1906"
+      },
+      {
+        "t": 1766,
+        "page": 6,
+        "anchor": "June 13, 1906"
+      },
+      {
+        "t": 2228,
+        "page": 6,
+        "anchor": "June 15, 1906"
+      },
+      {
+        "t": 2228,
+        "page": 6,
+        "anchor": "June 20, 1906"
+      },
+      {
+        "t": 3789,
+        "page": 7,
+        "anchor": "June 22, 1906"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 7,
+        "anchor": "June 23, 1906"
+      },
+      {
+        "t": 454,
+        "page": 7,
+        "anchor": "June 24, 1906"
+      },
+      {
+        "t": 627,
+        "page": 7,
+        "anchor": "June 26, 1906"
+      },
+      {
+        "t": 807,
+        "page": 7,
+        "anchor": "July 2, 1906"
+      },
+      {
+        "t": 1040,
+        "page": 8,
+        "anchor": "July 3, 1906"
+      },
+      {
+        "t": 1824,
+        "page": 8,
+        "anchor": "July 8, 1906"
+      },
+      {
+        "t": 2348,
+        "page": 8,
+        "anchor": "July 10, 1906"
+      },
+      {
+        "t": 2582,
+        "page": 9,
+        "anchor": "July 12, 1906"
+      },
+      {
+        "t": 2676,
+        "page": 9,
+        "anchor": "July 17, 1906"
+      },
+      {
+        "t": 3001,
+        "page": 9,
+        "anchor": "July 21, 1906"
+      },
+      {
+        "t": 3354,
+        "page": 9,
+        "anchor": "July 27, 1906"
+      },
+      {
+        "t": 3643,
+        "page": 9,
+        "anchor": "July 28, 1906"
+      },
+      {
+        "t": 3803,
+        "page": 10,
+        "anchor": "July 31, 1906"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "August 8, 1906"
+      },
+      {
+        "t": 250,
+        "page": 10,
+        "anchor": "August 10, 1906"
+      },
+      {
+        "t": 407,
+        "page": 10,
+        "anchor": "August 11, 1906"
+      },
+      {
+        "t": 514,
+        "page": 10,
+        "anchor": "August 25, 1906"
+      },
+      {
+        "t": 651,
+        "page": 11,
+        "anchor": "September 2, 1906"
+      },
+      {
+        "t": 1290,
+        "page": 11,
+        "anchor": "September 11, 1906"
+      },
+      {
+        "t": 1549,
+        "page": 11,
+        "anchor": "September 12, 1906"
+      },
+      {
+        "t": 1936,
+        "page": 12,
+        "anchor": "September 14, 1906"
+      },
+      {
+        "t": 2230,
+        "page": 12,
+        "anchor": "September 16, 1906"
+      },
+      {
+        "t": 2785,
+        "page": 13,
+        "anchor": "September 18, 1906"
+      },
+      {
+        "t": 2997,
+        "page": 13,
+        "anchor": "September 23, 1906"
+      },
+      {
+        "t": 3447,
+        "page": 13,
+        "anchor": "October 2, 1906"
+      },
+      {
+        "t": 3790,
+        "page": 13,
+        "anchor": "October 3, 1906"
+      },
+      {
+        "t": 4099,
+        "page": 14,
+        "anchor": "October 5, 1906"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "October 8, 1906"
+      },
+      {
+        "t": 195,
+        "page": 14,
+        "anchor": "October 10, 1906"
+      },
+      {
+        "t": 493,
+        "page": 15,
+        "anchor": "October 13, 1906"
+      },
+      {
+        "t": 1649,
+        "page": 15,
+        "anchor": "October 16, 1906"
+      },
+      {
+        "t": 2135,
+        "page": 16,
+        "anchor": "October 18, 1906"
+      },
+      {
+        "t": 2326,
+        "page": 16,
+        "anchor": "October 20, 1906"
+      },
+      {
+        "t": 2650,
+        "page": 16,
+        "anchor": "October 23, 1906"
+      },
+      {
+        "t": 2781,
+        "page": 16,
+        "anchor": "October 25, 1906"
+      },
+      {
+        "t": 3156,
+        "page": 17,
+        "anchor": "October 28, 1906"
+      },
+      {
+        "t": 3284,
+        "page": 17,
+        "anchor": "October 31, 1906"
+      },
+      {
+        "t": 3400,
+        "page": 17,
+        "anchor": "November 6, 1906"
+      },
+      {
+        "t": 3898,
+        "page": 18,
+        "anchor": "November 9, 1906"
+      },
+      {
+        "t": 4017,
+        "page": 18,
+        "anchor": "November 12, 1906"
+      },
+      {
+        "t": 4240,
+        "page": 18,
+        "anchor": "November 14, 1906"
+      },
+      {
+        "t": 4282,
+        "page": 18,
+        "anchor": "November 16, 1906"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 18,
+        "anchor": "November 16, 1906"
+      },
+      {
+        "t": 347,
+        "page": 18,
+        "anchor": "November 18, 1906"
+      },
+      {
+        "t": 431,
+        "page": 19,
+        "anchor": "November 20, 1906"
+      },
+      {
+        "t": 561,
+        "page": 19,
+        "anchor": "November 28, 1906"
+      },
+      {
+        "t": 1761,
+        "page": 19,
+        "anchor": "December 6, 1906"
+      },
+      {
+        "t": 2109,
+        "page": 20,
+        "anchor": "December 15, 1906"
+      },
+      {
+        "t": 2351,
+        "page": 20,
+        "anchor": "January 3, 1907"
+      },
+      {
+        "t": 3159,
+        "page": 21,
+        "anchor": "January 13, 1907"
+      },
+      {
+        "t": 3260,
+        "page": 21,
+        "anchor": "January 20, 1907"
+      },
+      {
+        "t": 3554,
+        "page": 21,
+        "anchor": "January 21, 1907"
+      },
+      {
+        "t": 3747,
+        "page": 21,
+        "anchor": "January 25, 1907"
+      },
+      {
+        "t": 3934,
+        "page": 22,
+        "anchor": "February 20, 1907"
+      },
+      {
+        "t": 4224,
+        "page": 22,
+        "anchor": "March 13, 1907"
+      }
+    ]
   },
   "8": {
-    "1": 3,
-    "2": 6,
-    "3": 10,
-    "4": 18
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "June 23, 1907"
+      },
+      {
+        "t": 282,
+        "page": 1,
+        "anchor": "June 25, 1907"
+      },
+      {
+        "t": 583,
+        "page": 1,
+        "anchor": "July 1, 1907"
+      },
+      {
+        "t": 1169,
+        "page": 1,
+        "anchor": "July 4, 1907"
+      },
+      {
+        "t": 1255,
+        "page": 2,
+        "anchor": "July 10, 1907"
+      },
+      {
+        "t": 1547,
+        "page": 2,
+        "anchor": "July 14, 1907"
+      },
+      {
+        "t": 1888,
+        "page": 2,
+        "anchor": "July 17, 1907"
+      },
+      {
+        "t": 2070,
+        "page": 2,
+        "anchor": "July 19, 1907"
+      },
+      {
+        "t": 2583,
+        "page": 3,
+        "anchor": "August 22, 1907"
+      },
+      {
+        "t": 3269,
+        "page": 3,
+        "anchor": "October 3, 1907"
+      },
+      {
+        "t": 3450,
+        "page": 3,
+        "anchor": "October 4, 1907"
+      },
+      {
+        "t": 3682,
+        "page": 4,
+        "anchor": "October 12, 1907"
+      },
+      {
+        "t": 3879,
+        "page": 4,
+        "anchor": "October 29, 1907"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "November 3, 1907"
+      },
+      {
+        "t": 328,
+        "page": 5,
+        "anchor": "November 18, 1907"
+      },
+      {
+        "t": 498,
+        "page": 5,
+        "anchor": "November 21, 1907"
+      },
+      {
+        "t": 1794,
+        "page": 6,
+        "anchor": "January 23, 1908"
+      },
+      {
+        "t": 2514,
+        "page": 6,
+        "anchor": "February 6, 1908"
+      },
+      {
+        "t": 2665,
+        "page": 7,
+        "anchor": "February 7, 1908"
+      },
+      {
+        "t": 2784,
+        "page": 7,
+        "anchor": "February 9, 1908"
+      },
+      {
+        "t": 2981,
+        "page": 7,
+        "anchor": "February 12, 1908"
+      },
+      {
+        "t": 3206,
+        "page": 7,
+        "anchor": "February 16, 1908"
+      },
+      {
+        "t": 3509,
+        "page": 7,
+        "anchor": "March 9, 1908"
+      },
+      {
+        "t": 3879,
+        "page": 8,
+        "anchor": "March 13, 1908"
+      },
+      {
+        "t": 4360,
+        "page": 8,
+        "anchor": "March 15, 1908"
+      }
+    ],
+    "3": [
+      {
+        "t": 683,
+        "page": 9,
+        "anchor": "April 5, 1908"
+      },
+      {
+        "t": 1037,
+        "page": 10,
+        "anchor": "April 8, 1908"
+      },
+      {
+        "t": 1704,
+        "page": 10,
+        "anchor": "May 3, 1908"
+      },
+      {
+        "t": 2135,
+        "page": 11,
+        "anchor": "May 15, 1908"
+      },
+      {
+        "t": 2324,
+        "page": 11,
+        "anchor": "June 22, 1908"
+      },
+      {
+        "t": 2448,
+        "page": 11,
+        "anchor": "June 31, 1908"
+      },
+      {
+        "t": 3163,
+        "page": 12,
+        "anchor": "July 26, 1908"
+      },
+      {
+        "t": 3191,
+        "page": 12,
+        "anchor": "August 10, 1908"
+      },
+      {
+        "t": 3765,
+        "page": 12,
+        "anchor": "August 14, 1908"
+      },
+      {
+        "t": 3899,
+        "page": 13,
+        "anchor": "August 19, 1908"
+      },
+      {
+        "t": 4382,
+        "page": 13,
+        "anchor": "August 23, 1908"
+      },
+      {
+        "t": 4584,
+        "page": 13,
+        "anchor": "August 26, 1908"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "September 2, 1908"
+      },
+      {
+        "t": 207,
+        "page": 14,
+        "anchor": "September 3, 1908"
+      },
+      {
+        "t": 357,
+        "page": 14,
+        "anchor": "September 5, 1908"
+      },
+      {
+        "t": 917,
+        "page": 14,
+        "anchor": "September 6, 1908"
+      },
+      {
+        "t": 1002,
+        "page": 14,
+        "anchor": "September 7, 1908"
+      },
+      {
+        "t": 1383,
+        "page": 15,
+        "anchor": "October 3, 1908"
+      },
+      {
+        "t": 1645,
+        "page": 15,
+        "anchor": "October 23, 1908"
+      },
+      {
+        "t": 1997,
+        "page": 15,
+        "anchor": "November 20, 1908"
+      },
+      {
+        "t": 2324,
+        "page": 15,
+        "anchor": "December 16, 1908"
+      },
+      {
+        "t": 2677,
+        "page": 16,
+        "anchor": "December 25, 1908"
+      },
+      {
+        "t": 3014,
+        "page": 16,
+        "anchor": "December 27, 1908"
+      },
+      {
+        "t": 3229,
+        "page": 16,
+        "anchor": "December 28, 1908"
+      },
+      {
+        "t": 3364,
+        "page": 17,
+        "anchor": "December 30, 1908"
+      },
+      {
+        "t": 3947,
+        "page": 17,
+        "anchor": "January 8, 1909"
+      },
+      {
+        "t": 4210,
+        "page": 18,
+        "anchor": "January 22, 1909"
+      },
+      {
+        "t": 4566,
+        "page": 18,
+        "anchor": "January 27, 1909"
+      },
+      {
+        "t": 4805,
+        "page": 19,
+        "anchor": "January 28, 1909"
+      }
+    ]
   },
   "9": {
-    "1": 2,
-    "2": 8,
-    "3": 15,
-    "4": 23
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "March 10, 1909"
+      },
+      {
+        "t": 792,
+        "page": 2,
+        "anchor": "May 5, 1909"
+      },
+      {
+        "t": 997,
+        "page": 2,
+        "anchor": "May 8, 1909"
+      },
+      {
+        "t": 1178,
+        "page": 2,
+        "anchor": "May 16, 1909"
+      },
+      {
+        "t": 1522,
+        "page": 3,
+        "anchor": "May 20, 1909"
+      },
+      {
+        "t": 2326,
+        "page": 4,
+        "anchor": "July 14, 1909"
+      },
+      {
+        "t": 2712,
+        "page": 4,
+        "anchor": "July 24, 1909"
+      },
+      {
+        "t": 2917,
+        "page": 5,
+        "anchor": "July 27, 1909"
+      },
+      {
+        "t": 3048,
+        "page": 5,
+        "anchor": "July 29, 1909"
+      },
+      {
+        "t": 3254,
+        "page": 5,
+        "anchor": "August 2, 1909"
+      }
+    ],
+    "2": [
+      {
+        "t": 6,
+        "page": 8,
+        "anchor": "October 7, 1909"
+      },
+      {
+        "t": 98,
+        "page": 9,
+        "anchor": "October 14, 1909"
+      },
+      {
+        "t": 344,
+        "page": 7,
+        "anchor": "October 4, 1909"
+      },
+      {
+        "t": 487,
+        "page": 10,
+        "anchor": "November 2, 1909"
+      },
+      {
+        "t": 645,
+        "page": 10,
+        "anchor": "November 4, 1909"
+      },
+      {
+        "t": 972,
+        "page": 10,
+        "anchor": "November 6, 1909"
+      },
+      {
+        "t": 1146,
+        "page": 10,
+        "anchor": "November 9, 1909"
+      },
+      {
+        "t": 1309,
+        "page": 11,
+        "anchor": "November 16, 1909"
+      },
+      {
+        "t": 1736,
+        "page": 11,
+        "anchor": "November 20, 1909"
+      },
+      {
+        "t": 1871,
+        "page": 12,
+        "anchor": "November 25, 1909"
+      },
+      {
+        "t": 2177,
+        "page": 12,
+        "anchor": "December 22, 1909"
+      },
+      {
+        "t": 2554,
+        "page": 13,
+        "anchor": "February 24, 1910"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 13,
+        "anchor": "February 26, 1910"
+      },
+      {
+        "t": 880,
+        "page": 14,
+        "anchor": "March 8, 1910"
+      },
+      {
+        "t": 958,
+        "page": 14,
+        "anchor": "March 12, 1910"
+      },
+      {
+        "t": 1757,
+        "page": 15,
+        "anchor": "March 23, 1910"
+      },
+      {
+        "t": 2454,
+        "page": 16,
+        "anchor": "April 10, 1910"
+      },
+      {
+        "t": 2779,
+        "page": 16,
+        "anchor": "May 24, 1910"
+      },
+      {
+        "t": 3165,
+        "page": 17,
+        "anchor": "June 2, 1910"
+      },
+      {
+        "t": 3487,
+        "page": 17,
+        "anchor": "July 4, 1910"
+      },
+      {
+        "t": 4097,
+        "page": 18,
+        "anchor": "July 8, 1910"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 18,
+        "anchor": "July 29, 1910"
+      },
+      {
+        "t": 839,
+        "page": 19,
+        "anchor": "August 3, 1910"
+      },
+      {
+        "t": 1501,
+        "page": 20,
+        "anchor": "August 12, 1910"
+      },
+      {
+        "t": 2075,
+        "page": 20,
+        "anchor": "August 19, 1910"
+      },
+      {
+        "t": 2506,
+        "page": 21,
+        "anchor": "August 22, 1910"
+      },
+      {
+        "t": 2597,
+        "page": 21,
+        "anchor": "September 2, 1910"
+      },
+      {
+        "t": 3217,
+        "page": 22,
+        "anchor": "September 3, 1910"
+      },
+      {
+        "t": 3458,
+        "page": 22,
+        "anchor": "September 9, 1910"
+      },
+      {
+        "t": 3611,
+        "page": 23,
+        "anchor": "September 11, 1910"
+      },
+      {
+        "t": 4064,
+        "page": 23,
+        "anchor": "September 22, 1910"
+      }
+    ]
   },
   "10": {
-    "2": 6,
-    "3": 13,
-    "4": 20,
-    "5": 22
+    "1": [
+      {
+        "t": 1607,
+        "page": 1,
+        "anchor": "November 9, 1910"
+      },
+      {
+        "t": 2118,
+        "page": 1,
+        "anchor": "November 23, 1910"
+      },
+      {
+        "t": 2865,
+        "page": 2,
+        "anchor": "November 29, 1910"
+      },
+      {
+        "t": 3283,
+        "page": 3,
+        "anchor": "December 2, 1910"
+      },
+      {
+        "t": 3622,
+        "page": 3,
+        "anchor": "December 22, 1910"
+      },
+      {
+        "t": 3909,
+        "page": 4,
+        "anchor": "December 24, 1910"
+      }
+    ],
+    "2": [
+      {
+        "t": 5,
+        "page": 4,
+        "anchor": "December 25, 1910"
+      },
+      {
+        "t": 887,
+        "page": 5,
+        "anchor": "January 8, 1910"
+      },
+      {
+        "t": 2150,
+        "page": 6,
+        "anchor": "January 10, 1911"
+      },
+      {
+        "t": 2877,
+        "page": 7,
+        "anchor": "January 15, 1911"
+      },
+      {
+        "t": 3546,
+        "page": 7,
+        "anchor": "January 17, 1911"
+      },
+      {
+        "t": 3863,
+        "page": 8,
+        "anchor": "January 19, 1911"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 8,
+        "anchor": "January 28, 1911"
+      },
+      {
+        "t": 632,
+        "page": 9,
+        "anchor": "February 4, 1911"
+      },
+      {
+        "t": 730,
+        "page": 9,
+        "anchor": "February 8, 1911"
+      },
+      {
+        "t": 1839,
+        "page": 12,
+        "anchor": "March 24, 1911"
+      },
+      {
+        "t": 1989,
+        "page": 12,
+        "anchor": "March 26, 1911"
+      },
+      {
+        "t": 2329,
+        "page": 12,
+        "anchor": "May 16, 1911"
+      },
+      {
+        "t": 2626,
+        "page": 13,
+        "anchor": "May 19, 1911"
+      },
+      {
+        "t": 2926,
+        "page": 13,
+        "anchor": "May 24, 1911"
+      },
+      {
+        "t": 3108,
+        "page": 13,
+        "anchor": "June 7, 1911"
+      },
+      {
+        "t": 3615,
+        "page": 13,
+        "anchor": "June 21, 1911"
+      },
+      {
+        "t": 3791,
+        "page": 14,
+        "anchor": "June 23, 1911"
+      },
+      {
+        "t": 4069,
+        "page": 14,
+        "anchor": "July 2, 1911"
+      },
+      {
+        "t": 4296,
+        "page": 14,
+        "anchor": "September 6, 1911"
+      },
+      {
+        "t": 4668,
+        "page": 14,
+        "anchor": "October 6, 1911"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 15,
+        "anchor": "October 8, 1911"
+      },
+      {
+        "t": 102,
+        "page": 15,
+        "anchor": "October 10, 1911"
+      },
+      {
+        "t": 984,
+        "page": 16,
+        "anchor": "October 12, 1911"
+      },
+      {
+        "t": 1136,
+        "page": 16,
+        "anchor": "October 14, 1911"
+      },
+      {
+        "t": 1717,
+        "page": 17,
+        "anchor": "October 15, 1911"
+      },
+      {
+        "t": 1872,
+        "page": 17,
+        "anchor": "October 16, 1911"
+      },
+      {
+        "t": 2023,
+        "page": 17,
+        "anchor": "October 17, 1911"
+      },
+      {
+        "t": 2483,
+        "page": 18,
+        "anchor": "October 18, 1911"
+      },
+      {
+        "t": 2842,
+        "page": 18,
+        "anchor": "October 19, 1911"
+      },
+      {
+        "t": 3149,
+        "page": 19,
+        "anchor": "October 20, 1911"
+      },
+      {
+        "t": 3307,
+        "page": 19,
+        "anchor": "October 23, 1911"
+      },
+      {
+        "t": 3443,
+        "page": 19,
+        "anchor": "October 26, 1911"
+      },
+      {
+        "t": 3614,
+        "page": 20,
+        "anchor": "November 2, 1911"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 20,
+        "anchor": "December 21, 1911"
+      },
+      {
+        "t": 285,
+        "page": 21,
+        "anchor": "January 5, 1912"
+      },
+      {
+        "t": 786,
+        "page": 21,
+        "anchor": "January 11, 1912"
+      },
+      {
+        "t": 1072,
+        "page": 21,
+        "anchor": "January 19, 1912"
+      },
+      {
+        "t": 1654,
+        "page": 22,
+        "anchor": "January 20, 1912"
+      },
+      {
+        "t": 2035,
+        "page": 22,
+        "anchor": "January 27, 1912"
+      },
+      {
+        "t": 2394,
+        "page": 23,
+        "anchor": "February 2, 1912"
+      },
+      {
+        "t": 2633,
+        "page": 23,
+        "anchor": "February 3, 1912"
+      },
+      {
+        "t": 2929,
+        "page": 24,
+        "anchor": "February 10, 1912"
+      }
+    ]
   },
   "11": {
-    "5": 18,
-    "8": 29,
-    "11": 40,
-    "13": 49,
-    "15": 56,
-    "16": 60,
-    "17": 60,
-    "18": 63
+    "1": [
+      {
+        "t": 2178,
+        "page": 3,
+        "anchor": "February 18, 1912"
+      },
+      {
+        "t": 2404,
+        "page": 3,
+        "anchor": "February 24, 1912"
+      },
+      {
+        "t": 3332,
+        "page": 4,
+        "anchor": "February 28, 1912"
+      },
+      {
+        "t": 3830,
+        "page": 5,
+        "anchor": "March 3, 1912"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 6,
+        "anchor": "March 13, 1912"
+      },
+      {
+        "t": 168,
+        "page": 6,
+        "anchor": "March 15, 1912"
+      },
+      {
+        "t": 796,
+        "page": 7,
+        "anchor": "March 20, 1912"
+      },
+      {
+        "t": 1283,
+        "page": 7,
+        "anchor": "April 4, 1912"
+      },
+      {
+        "t": 1544,
+        "page": 7,
+        "anchor": "April 10, 1912"
+      },
+      {
+        "t": 2187,
+        "page": 8,
+        "anchor": "April 23, 1912"
+      },
+      {
+        "t": 2702,
+        "page": 8,
+        "anchor": "May 9, 1912"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 9,
+        "anchor": "May 25, 1912"
+      },
+      {
+        "t": 148,
+        "page": 9,
+        "anchor": "May 30, 1912"
+      },
+      {
+        "t": 760,
+        "page": 10,
+        "anchor": "June 2, 1912"
+      },
+      {
+        "t": 1072,
+        "page": 10,
+        "anchor": "June 9, 1912"
+      },
+      {
+        "t": 1507,
+        "page": 10,
+        "anchor": "June 28, 1912"
+      },
+      {
+        "t": 2046,
+        "page": 10,
+        "anchor": "July 4, 1912"
+      },
+      {
+        "t": 3334,
+        "page": 11,
+        "anchor": "July 23, 1912"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 12,
+        "anchor": "August 12, 1912"
+      },
+      {
+        "t": 432,
+        "page": 12,
+        "anchor": "August 14, 1912"
+      },
+      {
+        "t": 1045,
+        "page": 13,
+        "anchor": "August 16, 1912"
+      },
+      {
+        "t": 1241,
+        "page": 13,
+        "anchor": "August 17, 1912"
+      },
+      {
+        "t": 1314,
+        "page": 13,
+        "anchor": "August 20, 1912"
+      },
+      {
+        "t": 1676,
+        "page": 14,
+        "anchor": "August 28, 1912"
+      },
+      {
+        "t": 2371,
+        "page": 14,
+        "anchor": "August 31, 1912"
+      },
+      {
+        "t": 2635,
+        "page": 14,
+        "anchor": "September 2, 1912"
+      },
+      {
+        "t": 3217,
+        "page": 15,
+        "anchor": "September 6, 1912"
+      },
+      {
+        "t": 3297,
+        "page": 15,
+        "anchor": "September 29, 1912"
+      },
+      {
+        "t": 3994,
+        "page": 16,
+        "anchor": "October 14, 1912"
+      }
+    ],
+    "5": [
+      {
+        "t": 622,
+        "page": 17,
+        "anchor": "November 2, 1912"
+      },
+      {
+        "t": 1064,
+        "page": 18,
+        "anchor": "November 25, 1912"
+      },
+      {
+        "t": 2118,
+        "page": 19,
+        "anchor": "December 14, 1912"
+      },
+      {
+        "t": 2611,
+        "page": 19,
+        "anchor": "December 20, 1912"
+      },
+      {
+        "t": 3013,
+        "page": 19,
+        "anchor": "January 22, 1913"
+      },
+      {
+        "t": 3531,
+        "page": 20,
+        "anchor": "February 5, 1913"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 21,
+        "anchor": "February 19, 1913"
+      },
+      {
+        "t": 718,
+        "page": 21,
+        "anchor": "March 16, 1913"
+      },
+      {
+        "t": 1264,
+        "page": 22,
+        "anchor": "March 21, 1913"
+      },
+      {
+        "t": 1707,
+        "page": 22,
+        "anchor": "March 24, 1913"
+      },
+      {
+        "t": 1913,
+        "page": 23,
+        "anchor": "April 2, 1913"
+      },
+      {
+        "t": 2318,
+        "page": 23,
+        "anchor": "April 10, 1913"
+      },
+      {
+        "t": 3249,
+        "page": 24,
+        "anchor": "May 21, 1913"
+      },
+      {
+        "t": 3472,
+        "page": 24,
+        "anchor": "June 12, 1913"
+      }
+    ],
+    "7": [
+      {
+        "t": 49,
+        "page": 25,
+        "anchor": "August 20, 1913"
+      },
+      {
+        "t": 1097,
+        "page": 25,
+        "anchor": "August 27, 1913"
+      },
+      {
+        "t": 1831,
+        "page": 26,
+        "anchor": "September 3, 1913"
+      },
+      {
+        "t": 2677,
+        "page": 26,
+        "anchor": "September 6, 1913"
+      },
+      {
+        "t": 2859,
+        "page": 27,
+        "anchor": "September 12, 1913"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 28,
+        "anchor": "September 21, 1913"
+      },
+      {
+        "t": 390,
+        "page": 28,
+        "anchor": "September 25, 1913"
+      },
+      {
+        "t": 915,
+        "page": 29,
+        "anchor": "October 2, 1913"
+      },
+      {
+        "t": 1368,
+        "page": 30,
+        "anchor": "November 18, 1913"
+      },
+      {
+        "t": 2068,
+        "page": 30,
+        "anchor": "November 27, 1913"
+      },
+      {
+        "t": 2727,
+        "page": 30,
+        "anchor": "March 8, 1914"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 32,
+        "anchor": "March 17, 1914"
+      },
+      {
+        "t": 713,
+        "page": 32,
+        "anchor": "March 19, 1914"
+      },
+      {
+        "t": 1358,
+        "page": 33,
+        "anchor": "March 24, 1914"
+      },
+      {
+        "t": 1623,
+        "page": 33,
+        "anchor": "April 5, 1914"
+      },
+      {
+        "t": 1819,
+        "page": 33,
+        "anchor": "April 10, 1914"
+      },
+      {
+        "t": 2430,
+        "page": 34,
+        "anchor": "June 29, 1914"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 39,
+        "anchor": "February 8, 1915"
+      },
+      {
+        "t": 1177,
+        "page": 40,
+        "anchor": "March 6, 1915"
+      },
+      {
+        "t": 1564,
+        "page": 40,
+        "anchor": "March 7, 1915"
+      },
+      {
+        "t": 1987,
+        "page": 41,
+        "anchor": "April 3, 1915"
+      },
+      {
+        "t": 2481,
+        "page": 41,
+        "anchor": "April 24, 1915"
+      },
+      {
+        "t": 2780,
+        "page": 42,
+        "anchor": "May 2, 1915"
+      },
+      {
+        "t": 3267,
+        "page": 42,
+        "anchor": "May 18, 1915"
+      }
+    ],
+    "12": [
+      {
+        "t": 0,
+        "page": 43,
+        "anchor": "May 25, 1915"
+      },
+      {
+        "t": 277,
+        "page": 43,
+        "anchor": "June 6, 1915"
+      },
+      {
+        "t": 570,
+        "page": 44,
+        "anchor": "June 17, 1915"
+      },
+      {
+        "t": 1198,
+        "page": 44,
+        "anchor": "July 9, 1915"
+      },
+      {
+        "t": 1746,
+        "page": 44,
+        "anchor": "July 25, 1915"
+      },
+      {
+        "t": 2155,
+        "page": 45,
+        "anchor": "July 28, 1915"
+      },
+      {
+        "t": 2501,
+        "page": 45,
+        "anchor": "August 12, 1915"
+      },
+      {
+        "t": 2897,
+        "page": 46,
+        "anchor": "August 14, 1915"
+      },
+      {
+        "t": 3190,
+        "page": 46,
+        "anchor": "August 24, 1915"
+      }
+    ],
+    "13": [
+      {
+        "t": 147,
+        "page": 47,
+        "anchor": "September 20, 1915"
+      },
+      {
+        "t": 424,
+        "page": 47,
+        "anchor": "October 2, 1915"
+      },
+      {
+        "t": 642,
+        "page": 47,
+        "anchor": "October 25, 1915"
+      },
+      {
+        "t": 792,
+        "page": 48,
+        "anchor": "October 28, 1915"
+      },
+      {
+        "t": 964,
+        "page": 48,
+        "anchor": "November 1, 1915"
+      },
+      {
+        "t": 1748,
+        "page": 49,
+        "anchor": "November 11, 1915"
+      },
+      {
+        "t": 1984,
+        "page": 49,
+        "anchor": "November 13, 1915"
+      },
+      {
+        "t": 2215,
+        "page": 49,
+        "anchor": "November 21, 1915"
+      },
+      {
+        "t": 2376,
+        "page": 50,
+        "anchor": "December 10, 1915"
+      },
+      {
+        "t": 2731,
+        "page": 50,
+        "anchor": "January 12, 1916"
+      },
+      {
+        "t": 2956,
+        "page": 50,
+        "anchor": "January 28, 1916"
+      },
+      {
+        "t": 3256,
+        "page": 51,
+        "anchor": "January 30, 1916"
+      }
+    ],
+    "14": [
+      {
+        "t": 0,
+        "page": 52,
+        "anchor": "April 1, 1916"
+      },
+      {
+        "t": 631,
+        "page": 53,
+        "anchor": "April 15, 1916"
+      },
+      {
+        "t": 1164,
+        "page": 53,
+        "anchor": "April 21, 1916"
+      },
+      {
+        "t": 1866,
+        "page": 53,
+        "anchor": "April 23, 1916"
+      },
+      {
+        "t": 2111,
+        "page": 54,
+        "anchor": "May 3, 1916"
+      },
+      {
+        "t": 3034,
+        "page": 54,
+        "anchor": "May 25, 1916"
+      }
+    ],
+    "15": [
+      {
+        "t": 0,
+        "page": 55,
+        "anchor": "June 4, 1916"
+      },
+      {
+        "t": 557,
+        "page": 55,
+        "anchor": "June 15, 1916"
+      },
+      {
+        "t": 1876,
+        "page": 57,
+        "anchor": "August 10, 1916"
+      },
+      {
+        "t": 2279,
+        "page": 57,
+        "anchor": "August 12, 1916"
+      }
+    ],
+    "16": [
+      {
+        "t": 0,
+        "page": 57,
+        "anchor": "September 8, 1916"
+      },
+      {
+        "t": 529,
+        "page": 58,
+        "anchor": "October 2, 1916"
+      },
+      {
+        "t": 719,
+        "page": 58,
+        "anchor": "October 13, 1916"
+      },
+      {
+        "t": 902,
+        "page": 58,
+        "anchor": "October 20, 1916"
+      },
+      {
+        "t": 1732,
+        "page": 59,
+        "anchor": "October 30, 1916"
+      },
+      {
+        "t": 1895,
+        "page": 59,
+        "anchor": "November 15, 1916"
+      },
+      {
+        "t": 2264,
+        "page": 60,
+        "anchor": "November 30, 1916"
+      }
+    ],
+    "17": [
+      {
+        "t": 0,
+        "page": 60,
+        "anchor": "December 5, 1916"
+      },
+      {
+        "t": 602,
+        "page": 61,
+        "anchor": "December 14, 1916"
+      },
+      {
+        "t": 1191,
+        "page": 61,
+        "anchor": "December 22, 1916"
+      },
+      {
+        "t": 1355,
+        "page": 61,
+        "anchor": "December 30, 1916"
+      },
+      {
+        "t": 2168,
+        "page": 62,
+        "anchor": "January 10, 1917"
+      }
+    ],
+    "18": [
+      {
+        "t": 0,
+        "page": 62,
+        "anchor": "February 2, 1917"
+      },
+      {
+        "t": 228,
+        "page": 63,
+        "anchor": "February 24, 1917"
+      }
+    ]
   },
   "12": {
-    "2": 6,
-    "4": 8,
-    "6": 15,
-    "7": 17,
-    "9": 21,
-    "11": 25,
-    "12": 28,
-    "13": 32,
-    "15": 36,
-    "16": 40,
-    "22": 60,
-    "23": 60,
-    "24": 65
+    "1": [
+      {
+        "t": 0,
+        "page": 2,
+        "anchor": "April 18, 1917"
+      },
+      {
+        "t": 257,
+        "page": 3,
+        "anchor": "May 2, 1917"
+      },
+      {
+        "t": 637,
+        "page": 3,
+        "anchor": "May 10, 1917"
+      },
+      {
+        "t": 1142,
+        "page": 3,
+        "anchor": "May 12, 1917"
+      },
+      {
+        "t": 1636,
+        "page": 4,
+        "anchor": "May 16, 1917"
+      },
+      {
+        "t": 2072,
+        "page": 4,
+        "anchor": "June 7, 1917"
+      },
+      {
+        "t": 2762,
+        "page": 4,
+        "anchor": "June 14, 1917"
+      }
+    ],
+    "2": [
+      {
+        "t": 240,
+        "page": 5,
+        "anchor": "July 18, 1917"
+      },
+      {
+        "t": 940,
+        "page": 6,
+        "anchor": "July 25, 1917"
+      },
+      {
+        "t": 1698,
+        "page": 6,
+        "anchor": "August 6, 1917"
+      },
+      {
+        "t": 2088,
+        "page": 6,
+        "anchor": "August 14, 1917"
+      }
+    ],
+    "4": [
+      {
+        "t": 426,
+        "page": 8,
+        "anchor": "September 18, 1917"
+      },
+      {
+        "t": 785,
+        "page": 9,
+        "anchor": "September 28, 1917"
+      },
+      {
+        "t": 1410,
+        "page": 9,
+        "anchor": "October 4, 1917"
+      },
+      {
+        "t": 2119,
+        "page": 10,
+        "anchor": "October 8, 1917"
+      },
+      {
+        "t": 2450,
+        "page": 10,
+        "anchor": "October 20, 1917"
+      },
+      {
+        "t": 2591,
+        "page": 10,
+        "anchor": "October 23, 1917"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "November 2, 1917"
+      },
+      {
+        "t": 566,
+        "page": 11,
+        "anchor": "November 20, 1917"
+      },
+      {
+        "t": 1377,
+        "page": 11,
+        "anchor": "November 27, 1917"
+      },
+      {
+        "t": 2434,
+        "page": 12,
+        "anchor": "December 6, 1917"
+      },
+      {
+        "t": 3280,
+        "page": 12,
+        "anchor": "December 12, 1917"
+      },
+      {
+        "t": 3688,
+        "page": 13,
+        "anchor": "December 28, 1917"
+      },
+      {
+        "t": 4202,
+        "page": 13,
+        "anchor": "December 30, 1917"
+      },
+      {
+        "t": 4831,
+        "page": 14,
+        "anchor": "January 27, 1918"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "January 31, 1918"
+      },
+      {
+        "t": 431,
+        "page": 14,
+        "anchor": "February 17, 1918"
+      },
+      {
+        "t": 641,
+        "page": 15,
+        "anchor": "March 4, 1918"
+      },
+      {
+        "t": 984,
+        "page": 15,
+        "anchor": "March 16, 1918"
+      },
+      {
+        "t": 1288,
+        "page": 15,
+        "anchor": "March 19, 1918"
+      },
+      {
+        "t": 1617,
+        "page": 15,
+        "anchor": "March 26, 1918"
+      },
+      {
+        "t": 1889,
+        "page": 15,
+        "anchor": "March 27, 1918"
+      },
+      {
+        "t": 2247,
+        "page": 16,
+        "anchor": "April 8, 1918"
+      },
+      {
+        "t": 3162,
+        "page": 16,
+        "anchor": "April 12, 1918"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 16,
+        "anchor": "April 16, 1918"
+      },
+      {
+        "t": 321,
+        "page": 17,
+        "anchor": "April 25, 1918"
+      },
+      {
+        "t": 659,
+        "page": 17,
+        "anchor": "May 7, 1918"
+      },
+      {
+        "t": 1003,
+        "page": 17,
+        "anchor": "May 20, 1918"
+      },
+      {
+        "t": 1253,
+        "page": 17,
+        "anchor": "May 23, 1918"
+      },
+      {
+        "t": 1636,
+        "page": 18,
+        "anchor": "May 28, 1918"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 18,
+        "anchor": "June 4, 1918"
+      },
+      {
+        "t": 248,
+        "page": 18,
+        "anchor": "June 12, 1918"
+      },
+      {
+        "t": 609,
+        "page": 19,
+        "anchor": "June 14, 1918"
+      },
+      {
+        "t": 833,
+        "page": 19,
+        "anchor": "June 20, 1918"
+      },
+      {
+        "t": 1494,
+        "page": 19,
+        "anchor": "July 2, 1918"
+      },
+      {
+        "t": 1656,
+        "page": 20,
+        "anchor": "July 9, 1918"
+      },
+      {
+        "t": 1985,
+        "page": 20,
+        "anchor": "July 12, 1918"
+      },
+      {
+        "t": 2092,
+        "page": 20,
+        "anchor": "July 16, 1918"
+      },
+      {
+        "t": 2682,
+        "page": 20,
+        "anchor": "August 7, 1918"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 21,
+        "anchor": "August 12, 1918"
+      },
+      {
+        "t": 873,
+        "page": 21,
+        "anchor": "August 19, 1918"
+      },
+      {
+        "t": 1593,
+        "page": 22,
+        "anchor": "September 25, 1918"
+      }
+    ],
+    "10": [
+      {
+        "t": 301,
+        "page": 22,
+        "anchor": "October 14, 1918"
+      },
+      {
+        "t": 1009,
+        "page": 23,
+        "anchor": "October 16, 1918"
+      },
+      {
+        "t": 1862,
+        "page": 23,
+        "anchor": "October 24, 1918"
+      },
+      {
+        "t": 2220,
+        "page": 24,
+        "anchor": "November 7, 1918"
+      },
+      {
+        "t": 2546,
+        "page": 24,
+        "anchor": "November 15, 1918"
+      },
+      {
+        "t": 2885,
+        "page": 24,
+        "anchor": "November 16, 1918"
+      },
+      {
+        "t": 3174,
+        "page": 24,
+        "anchor": "November 29, 1918"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 25,
+        "anchor": "December 4, 1918"
+      },
+      {
+        "t": 625,
+        "page": 25,
+        "anchor": "December 25, 1918"
+      },
+      {
+        "t": 1120,
+        "page": 26,
+        "anchor": "December 27, 1918"
+      },
+      {
+        "t": 1486,
+        "page": 26,
+        "anchor": "January 2, 1919"
+      },
+      {
+        "t": 2023,
+        "page": 26,
+        "anchor": "January 4, 1919"
+      },
+      {
+        "t": 2419,
+        "page": 27,
+        "anchor": "January 8, 1919"
+      }
+    ],
+    "12": [
+      {
+        "t": 0,
+        "page": 28,
+        "anchor": "January 25, 1919"
+      },
+      {
+        "t": 1811,
+        "page": 29,
+        "anchor": "January 29, 1919"
+      }
+    ],
+    "13": [
+      {
+        "t": 0,
+        "page": 31,
+        "anchor": "February 6, 1919"
+      },
+      {
+        "t": 489,
+        "page": 31,
+        "anchor": "February 9, 1919"
+      },
+      {
+        "t": 499,
+        "page": 29,
+        "anchor": "January 29, 1919"
+      },
+      {
+        "t": 843,
+        "page": 32,
+        "anchor": "February 10, 1919"
+      },
+      {
+        "t": 1747,
+        "page": 32,
+        "anchor": "February 13, 1919"
+      }
+    ],
+    "14": [
+      {
+        "t": 0,
+        "page": 34,
+        "anchor": "February 24, 1919"
+      },
+      {
+        "t": 800,
+        "page": 34,
+        "anchor": "February 27, 1919"
+      },
+      {
+        "t": 1737,
+        "page": 35,
+        "anchor": "March 3, 1919"
+      }
+    ],
+    "15": [
+      {
+        "t": 0,
+        "page": 36,
+        "anchor": "March 12, 1919"
+      },
+      {
+        "t": 233,
+        "page": 36,
+        "anchor": "March 14, 1919"
+      },
+      {
+        "t": 2310,
+        "page": 38,
+        "anchor": "March 22, 1919"
+      }
+    ],
+    "16": [
+      {
+        "t": 1224,
+        "page": 40,
+        "anchor": "April 19, 1919"
+      },
+      {
+        "t": 1482,
+        "page": 40,
+        "anchor": "May 4, 1919"
+      },
+      {
+        "t": 2213,
+        "page": 41,
+        "anchor": "May 8, 1919"
+      }
+    ],
+    "17": [
+      {
+        "t": 0,
+        "page": 41,
+        "anchor": "May 10, 1919"
+      },
+      {
+        "t": 190,
+        "page": 42,
+        "anchor": "May 16, 1919"
+      },
+      {
+        "t": 635,
+        "page": 42,
+        "anchor": "May 22, 1919"
+      },
+      {
+        "t": 1125,
+        "page": 43,
+        "anchor": "May 24, 1919"
+      },
+      {
+        "t": 1353,
+        "page": 43,
+        "anchor": "June 4, 1919"
+      },
+      {
+        "t": 2043,
+        "page": 44,
+        "anchor": "June 16, 1919"
+      },
+      {
+        "t": 2398,
+        "page": 44,
+        "anchor": "June 27, 1919"
+      }
+    ],
+    "18": [
+      {
+        "t": 0,
+        "page": 44,
+        "anchor": "July 11, 1919"
+      },
+      {
+        "t": 439,
+        "page": 44,
+        "anchor": "August 6, 1919"
+      },
+      {
+        "t": 1034,
+        "page": 45,
+        "anchor": "September 3, 1919"
+      },
+      {
+        "t": 1637,
+        "page": 45,
+        "anchor": "September 26, 1919"
+      },
+      {
+        "t": 2091,
+        "page": 46,
+        "anchor": "October 8, 1919"
+      },
+      {
+        "t": 2440,
+        "page": 46,
+        "anchor": "October 15, 1919"
+      },
+      {
+        "t": 3027,
+        "page": 46,
+        "anchor": "November 3, 1919"
+      }
+    ],
+    "19": [
+      {
+        "t": 0,
+        "page": 47,
+        "anchor": "December 6, 1919"
+      },
+      {
+        "t": 652,
+        "page": 47,
+        "anchor": "December 15, 1919"
+      },
+      {
+        "t": 1257,
+        "page": 48,
+        "anchor": "December 26, 1919"
+      },
+      {
+        "t": 2105,
+        "page": 48,
+        "anchor": "January 1, 1920"
+      },
+      {
+        "t": 2766,
+        "page": 49,
+        "anchor": "January 9, 1920"
+      },
+      {
+        "t": 3206,
+        "page": 49,
+        "anchor": "January 15, 1920"
+      },
+      {
+        "t": 3590,
+        "page": 50,
+        "anchor": "January 24, 1920"
+      }
+    ],
+    "20": [
+      {
+        "t": 443,
+        "page": 50,
+        "anchor": "March 19, 1920"
+      },
+      {
+        "t": 991,
+        "page": 51,
+        "anchor": "March 23, 1920"
+      },
+      {
+        "t": 1696,
+        "page": 51,
+        "anchor": "April 15, 1920"
+      }
+    ],
+    "21": [
+      {
+        "t": 0,
+        "page": 53,
+        "anchor": "May 24, 1920"
+      },
+      {
+        "t": 255,
+        "page": 53,
+        "anchor": "May 28, 1920"
+      },
+      {
+        "t": 1084,
+        "page": 54,
+        "anchor": "June 10, 1920"
+      },
+      {
+        "t": 1598,
+        "page": 54,
+        "anchor": "June 22, 1920"
+      },
+      {
+        "t": 2031,
+        "page": 54,
+        "anchor": "September 2, 1920"
+      },
+      {
+        "t": 2625,
+        "page": 55,
+        "anchor": "September 21, 1920"
+      },
+      {
+        "t": 2743,
+        "page": 55,
+        "anchor": "September 25, 1920"
+      },
+      {
+        "t": 3119,
+        "page": 56,
+        "anchor": "October 12, 1920"
+      },
+      {
+        "t": 3316,
+        "page": 56,
+        "anchor": "November 15, 1920"
+      },
+      {
+        "t": 3478,
+        "page": 56,
+        "anchor": "November 28, 1920"
+      }
+    ],
+    "22": [
+      {
+        "t": 268,
+        "page": 57,
+        "anchor": "December 22, 1920"
+      },
+      {
+        "t": 766,
+        "page": 57,
+        "anchor": "December 25, 1920"
+      },
+      {
+        "t": 1270,
+        "page": 58,
+        "anchor": "January 5, 1921"
+      },
+      {
+        "t": 2135,
+        "page": 59,
+        "anchor": "January 10, 1921"
+      },
+      {
+        "t": 2596,
+        "page": 59,
+        "anchor": "January 17, 1921"
+      }
+    ],
+    "23": [
+      {
+        "t": 0,
+        "page": 60,
+        "anchor": "January 24, 1921"
+      },
+      {
+        "t": 481,
+        "page": 61,
+        "anchor": "February 2, 1921"
+      },
+      {
+        "t": 907,
+        "page": 62,
+        "anchor": "February 8, 1921"
+      },
+      {
+        "t": 1313,
+        "page": 62,
+        "anchor": "February 16, 1921"
+      },
+      {
+        "t": 1591,
+        "page": 62,
+        "anchor": "February 22, 1921"
+      }
+    ],
+    "24": [
+      {
+        "t": 0,
+        "page": 63,
+        "anchor": "March 8, 1921"
+      },
+      {
+        "t": 833,
+        "page": 64,
+        "anchor": "March 12, 1921"
+      },
+      {
+        "t": 1117,
+        "page": 64,
+        "anchor": "March 17, 1921"
+      },
+      {
+        "t": 1890,
+        "page": 65,
+        "anchor": "March 23, 1921"
+      },
+      {
+        "t": 2460,
+        "page": 65,
+        "anchor": "April 2, 1921"
+      },
+      {
+        "t": 2682,
+        "page": 65,
+        "anchor": "April 23, 1921"
+      },
+      {
+        "t": 3373,
+        "page": 66,
+        "anchor": "April 26, 1921"
+      }
+    ]
   },
   "13": {
-    "1": 2,
-    "2": 4,
-    "3": 6,
-    "7": 12,
-    "9": 18,
-    "10": 21,
-    "11": 22,
-    "12": 26,
-    "13": 29
+    "1": [
+      {
+        "t": 624,
+        "page": 1,
+        "anchor": "May 21, 1921"
+      },
+      {
+        "t": 1394,
+        "page": 1,
+        "anchor": "June 2, 1921"
+      },
+      {
+        "t": 2067,
+        "page": 2,
+        "anchor": "June 6, 1921"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 2,
+        "anchor": "June 12, 1921"
+      },
+      {
+        "t": 309,
+        "page": 3,
+        "anchor": "June 20, 1921"
+      },
+      {
+        "t": 1020,
+        "page": 3,
+        "anchor": "July 14, 1921"
+      },
+      {
+        "t": 1337,
+        "page": 4,
+        "anchor": "July 20, 1921"
+      },
+      {
+        "t": 1815,
+        "page": 4,
+        "anchor": "July 26, 1921"
+      },
+      {
+        "t": 2126,
+        "page": 4,
+        "anchor": "August 9, 1921"
+      },
+      {
+        "t": 2498,
+        "page": 5,
+        "anchor": "August 13, 1921"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "August 20, 1921"
+      },
+      {
+        "t": 894,
+        "page": 5,
+        "anchor": "August 25, 1921"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 6,
+        "anchor": "September 2, 1921"
+      },
+      {
+        "t": 885,
+        "page": 6,
+        "anchor": "September 6, 1921"
+      },
+      {
+        "t": 1986,
+        "page": 7,
+        "anchor": "September 14, 1921"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 8,
+        "anchor": "September 21, 1921"
+      },
+      {
+        "t": 950,
+        "page": 8,
+        "anchor": "September 28, 1921"
+      },
+      {
+        "t": 1879,
+        "page": 9,
+        "anchor": "October 6, 1921"
+      },
+      {
+        "t": 2690,
+        "page": 9,
+        "anchor": "October 9, 1921"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "October 13, 1921"
+      },
+      {
+        "t": 989,
+        "page": 11,
+        "anchor": "October 16, 1921"
+      },
+      {
+        "t": 2194,
+        "page": 11,
+        "anchor": "October 18, 1921"
+      },
+      {
+        "t": 2678,
+        "page": 11,
+        "anchor": "October 21, 1921"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 12,
+        "anchor": "October 23, 1921"
+      },
+      {
+        "t": 844,
+        "page": 13,
+        "anchor": "October 27, 1921"
+      },
+      {
+        "t": 2032,
+        "page": 13,
+        "anchor": "October 29, 1921"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "November 4, 1921"
+      },
+      {
+        "t": 2500,
+        "page": 15,
+        "anchor": "November 8, 1921"
+      }
+    ],
+    "9": [
+      {
+        "t": 1937,
+        "page": 16,
+        "anchor": "November 16, 1921"
+      },
+      {
+        "t": 2545,
+        "page": 17,
+        "anchor": "November 19, 1921"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 20,
+        "anchor": "December 3, 1921"
+      },
+      {
+        "t": 1482,
+        "page": 21,
+        "anchor": "December 5, 1921"
+      },
+      {
+        "t": 2737,
+        "page": 22,
+        "anchor": "December 10, 1921"
+      },
+      {
+        "t": 2996,
+        "page": 22,
+        "anchor": "December 15, 1921"
+      }
+    ],
+    "11": [
+      {
+        "t": 0,
+        "page": 22,
+        "anchor": "December 18, 1921"
+      },
+      {
+        "t": 2121,
+        "page": 23,
+        "anchor": "December 23, 1921"
+      },
+      {
+        "t": 2857,
+        "page": 24,
+        "anchor": "December 25, 1921"
+      }
+    ],
+    "12": [
+      {
+        "t": 0,
+        "page": 25,
+        "anchor": "December 27, 1921"
+      },
+      {
+        "t": 1007,
+        "page": 25,
+        "anchor": "December 28, 1921"
+      },
+      {
+        "t": 1399,
+        "page": 26,
+        "anchor": "January 3, 1922"
+      },
+      {
+        "t": 2046,
+        "page": 26,
+        "anchor": "January 5, 1922"
+      },
+      {
+        "t": 2335,
+        "page": 23,
+        "anchor": "December 23, 1921"
+      },
+      {
+        "t": 2551,
+        "page": 26,
+        "anchor": "January 11, 1922"
+      }
+    ],
+    "13": [
+      {
+        "t": 0,
+        "page": 27,
+        "anchor": "January 14, 1922"
+      },
+      {
+        "t": 721,
+        "page": 27,
+        "anchor": "January 17, 1922"
+      },
+      {
+        "t": 1170,
+        "page": 28,
+        "anchor": "January 20, 1922"
+      }
+    ],
+    "14": [
+      {
+        "t": 0,
+        "page": 29,
+        "anchor": "January 28, 1922"
+      },
+      {
+        "t": 796,
+        "page": 30,
+        "anchor": "January 30, 1922"
+      },
+      {
+        "t": 1295,
+        "page": 30,
+        "anchor": "February 2, 1922"
+      },
+      {
+        "t": 2270,
+        "page": 31,
+        "anchor": "February 4, 1922"
+      }
+    ]
   },
   "14": {
-    "3": 9,
-    "5": 17,
-    "7": 26,
-    "9": 32,
-    "10": 36,
-    "11": 41,
-    "12": 43
+    "1": [
+      {
+        "t": 1450,
+        "page": 31,
+        "anchor": "September 5, 1922"
+      },
+      {
+        "t": 1898,
+        "page": 1,
+        "anchor": "February 4, 1922"
+      },
+      {
+        "t": 3436,
+        "page": 1,
+        "anchor": "February 9, 1922"
+      },
+      {
+        "t": 3966,
+        "page": 2,
+        "anchor": "February 14, 1922"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 2,
+        "anchor": "February 17, 1922"
+      },
+      {
+        "t": 1042,
+        "page": 3,
+        "anchor": "February 21, 1922"
+      },
+      {
+        "t": 1369,
+        "page": 4,
+        "anchor": "February 24, 1922"
+      },
+      {
+        "t": 1684,
+        "page": 4,
+        "anchor": "February 26, 1922"
+      },
+      {
+        "t": 2121,
+        "page": 4,
+        "anchor": "March 1, 1922"
+      },
+      {
+        "t": 2541,
+        "page": 5,
+        "anchor": "March 3, 1922"
+      },
+      {
+        "t": 3740,
+        "page": 6,
+        "anchor": "March 7, 1922"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 7,
+        "anchor": "March 13, 1922"
+      },
+      {
+        "t": 1691,
+        "page": 8,
+        "anchor": "March 18, 1922"
+      },
+      {
+        "t": 2526,
+        "page": 8,
+        "anchor": "March 21, 1922"
+      },
+      {
+        "t": 2982,
+        "page": 9,
+        "anchor": "March 24, 1922"
+      },
+      {
+        "t": 3414,
+        "page": 9,
+        "anchor": "March 28, 1922"
+      },
+      {
+        "t": 3877,
+        "page": 10,
+        "anchor": "April 1, 1922"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "April 6, 1922"
+      },
+      {
+        "t": 646,
+        "page": 11,
+        "anchor": "April 8, 1922"
+      },
+      {
+        "t": 1278,
+        "page": 11,
+        "anchor": "April 12, 1922"
+      },
+      {
+        "t": 1633,
+        "page": 12,
+        "anchor": "April 13, 1922"
+      },
+      {
+        "t": 2489,
+        "page": 12,
+        "anchor": "April 17, 1922"
+      },
+      {
+        "t": 3855,
+        "page": 14,
+        "anchor": "April 25, 1922"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "April 29, 1922"
+      },
+      {
+        "t": 746,
+        "page": 15,
+        "anchor": "May 8, 1922"
+      },
+      {
+        "t": 2042,
+        "page": 16,
+        "anchor": "May 15, 1922"
+      },
+      {
+        "t": 2383,
+        "page": 17,
+        "anchor": "May 19, 1922"
+      },
+      {
+        "t": 3402,
+        "page": 17,
+        "anchor": "May 27, 1922"
+      },
+      {
+        "t": 4053,
+        "page": 18,
+        "anchor": "June 6, 1922"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 19,
+        "anchor": "June 9, 1922"
+      },
+      {
+        "t": 680,
+        "page": 19,
+        "anchor": "June 11, 1922"
+      },
+      {
+        "t": 1134,
+        "page": 20,
+        "anchor": "June 15, 1922"
+      },
+      {
+        "t": 1912,
+        "page": 21,
+        "anchor": "June 19, 1922"
+      },
+      {
+        "t": 2251,
+        "page": 21,
+        "anchor": "June 23, 1922"
+      },
+      {
+        "t": 2755,
+        "page": 22,
+        "anchor": "June 26, 1922"
+      },
+      {
+        "t": 3731,
+        "page": 23,
+        "anchor": "July 10, 1922"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 24,
+        "anchor": "July 14, 1922"
+      },
+      {
+        "t": 723,
+        "page": 24,
+        "anchor": "July 16, 1922"
+      },
+      {
+        "t": 1311,
+        "page": 25,
+        "anchor": "July 20, 1922"
+      },
+      {
+        "t": 2502,
+        "page": 25,
+        "anchor": "July 24, 1922"
+      },
+      {
+        "t": 3143,
+        "page": 26,
+        "anchor": "July 28, 1922"
+      },
+      {
+        "t": 4249,
+        "page": 27,
+        "anchor": "July 30, 1922"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 27,
+        "anchor": "August 2, 1922"
+      },
+      {
+        "t": 433,
+        "page": 27,
+        "anchor": "August 6, 1922"
+      },
+      {
+        "t": 1712,
+        "page": 28,
+        "anchor": "August 15, 1922"
+      },
+      {
+        "t": 1955,
+        "page": 29,
+        "anchor": "August 19, 1922"
+      },
+      {
+        "t": 2367,
+        "page": 29,
+        "anchor": "August 23, 1922"
+      },
+      {
+        "t": 3033,
+        "page": 30,
+        "anchor": "August 26, 1922"
+      },
+      {
+        "t": 3339,
+        "page": 30,
+        "anchor": "August 29, 1922"
+      },
+      {
+        "t": 3668,
+        "page": 30,
+        "anchor": "September 1, 1922"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 31,
+        "anchor": "September 5, 1922"
+      },
+      {
+        "t": 1735,
+        "page": 33,
+        "anchor": "September 11, 1922"
+      },
+      {
+        "t": 2489,
+        "page": 33,
+        "anchor": "September 15, 1922"
+      },
+      {
+        "t": 2886,
+        "page": 34,
+        "anchor": "September 20, 1922"
+      },
+      {
+        "t": 3468,
+        "page": 34,
+        "anchor": "September 24, 1922"
+      },
+      {
+        "t": 3807,
+        "page": 35,
+        "anchor": "September 27, 1922"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 36,
+        "anchor": "October 6, 1922"
+      },
+      {
+        "t": 931,
+        "page": 37,
+        "anchor": "October 9, 1922"
+      }
+    ],
+    "11": [
+      {
+        "t": 1138,
+        "page": 41,
+        "anchor": "November 8, 1922"
+      },
+      {
+        "t": 1389,
+        "page": 41,
+        "anchor": "November 11, 1922"
+      },
+      {
+        "t": 3984,
+        "page": 42,
+        "anchor": "November 20, 1922"
+      }
+    ],
+    "12": [
+      {
+        "t": 0,
+        "page": 43,
+        "anchor": "November 24, 1922"
+      }
+    ]
   },
   "15": {
-    "1": 7,
-    "2": 10,
-    "3": 17,
-    "4": 19,
-    "5": 25,
-    "6": 32
+    "1": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "December 21, 1922"
+      },
+      {
+        "t": 736,
+        "page": 6,
+        "anchor": "January 2, 1923"
+      },
+      {
+        "t": 1908,
+        "page": 7,
+        "anchor": "January 5, 1923"
+      },
+      {
+        "t": 2604,
+        "page": 8,
+        "anchor": "January 16, 1923"
+      },
+      {
+        "t": 3157,
+        "page": 8,
+        "anchor": "January 24, 1923"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "February 3, 1923"
+      },
+      {
+        "t": 263,
+        "page": 10,
+        "anchor": "February 13, 1923"
+      },
+      {
+        "t": 902,
+        "page": 11,
+        "anchor": "February 16, 1923"
+      },
+      {
+        "t": 1967,
+        "page": 11,
+        "anchor": "February 22, 1923"
+      },
+      {
+        "t": 3636,
+        "page": 13,
+        "anchor": "March 18, 1923"
+      },
+      {
+        "t": 4064,
+        "page": 13,
+        "anchor": "March 23, 1923"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 14,
+        "anchor": "March 27, 1923"
+      },
+      {
+        "t": 686,
+        "page": 14,
+        "anchor": "April 2, 1923"
+      },
+      {
+        "t": 2128,
+        "page": 15,
+        "anchor": "April 9, 1923"
+      },
+      {
+        "t": 2594,
+        "page": 16,
+        "anchor": "April 14, 1923"
+      },
+      {
+        "t": 4199,
+        "page": 18,
+        "anchor": "April 20, 1923"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 18,
+        "anchor": "April 21, 1923"
+      },
+      {
+        "t": 582,
+        "page": 19,
+        "anchor": "April 25, 1923"
+      },
+      {
+        "t": 3854,
+        "page": 22,
+        "anchor": "May 8, 1923"
+      },
+      {
+        "t": 4330,
+        "page": 23,
+        "anchor": "May 18, 1923"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 25,
+        "anchor": "June 6, 1923"
+      },
+      {
+        "t": 1249,
+        "page": 26,
+        "anchor": "June 10, 1923"
+      },
+      {
+        "t": 2145,
+        "page": 27,
+        "anchor": "June 15, 1923"
+      },
+      {
+        "t": 3222,
+        "page": 28,
+        "anchor": "June 18, 1923"
+      }
+    ],
+    "6": [
+      {
+        "t": 7,
+        "page": 29,
+        "anchor": "June 21, 1923"
+      },
+      {
+        "t": 688,
+        "page": 30,
+        "anchor": "June 28, 1923"
+      },
+      {
+        "t": 4141,
+        "page": 32,
+        "anchor": "July 11, 1923"
+      },
+      {
+        "t": 5612,
+        "page": 33,
+        "anchor": "July 14, 1923"
+      }
+    ]
   },
   "16": {
-    "1": 3,
-    "5": 12,
-    "8": 23,
-    "9": 25,
-    "10": 26,
-    "11": 29,
-    "12": 31,
-    "13": 37,
-    "15": 41,
-    "17": 48
+    "1": [
+      {
+        "t": 0,
+        "page": 1,
+        "anchor": "July 23, 1923"
+      },
+      {
+        "t": 676,
+        "page": 1,
+        "anchor": "July 24, 1923"
+      },
+      {
+        "t": 1487,
+        "page": 2,
+        "anchor": "July 27, 1923"
+      },
+      {
+        "t": 1771,
+        "page": 2,
+        "anchor": "July 30, 1923"
+      },
+      {
+        "t": 3003,
+        "page": 3,
+        "anchor": "August 5, 1923"
+      },
+      {
+        "t": 4283,
+        "page": 4,
+        "anchor": "August 13, 1923"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 5,
+        "anchor": "August 16, 1923"
+      },
+      {
+        "t": 583,
+        "page": 6,
+        "anchor": "August 20, 1923"
+      },
+      {
+        "t": 1861,
+        "page": 7,
+        "anchor": "August 28, 1923"
+      },
+      {
+        "t": 2826,
+        "page": 8,
+        "anchor": "September 6, 1923"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 8,
+        "anchor": "September 6, 1923"
+      },
+      {
+        "t": 1821,
+        "page": 9,
+        "anchor": "September 9, 1923"
+      },
+      {
+        "t": 2458,
+        "page": 9,
+        "anchor": "September 14, 1923"
+      }
+    ],
+    "4": [
+      {
+        "t": 0,
+        "page": 10,
+        "anchor": "September 21, 1923"
+      },
+      {
+        "t": 1104,
+        "page": 10,
+        "anchor": "October 4, 1923"
+      },
+      {
+        "t": 1686,
+        "page": 11,
+        "anchor": "October 16, 1923"
+      },
+      {
+        "t": 2760,
+        "page": 12,
+        "anchor": "October 20, 1923"
+      }
+    ],
+    "5": [
+      {
+        "t": 0,
+        "page": 12,
+        "anchor": "October 30, 1923"
+      },
+      {
+        "t": 1327,
+        "page": 13,
+        "anchor": "November 5, 1923"
+      },
+      {
+        "t": 2624,
+        "page": 14,
+        "anchor": "November 8, 1923"
+      }
+    ],
+    "6": [
+      {
+        "t": 0,
+        "page": 15,
+        "anchor": "November 10, 1923"
+      },
+      {
+        "t": 2871,
+        "page": 17,
+        "anchor": "November 15, 1923"
+      }
+    ],
+    "7": [
+      {
+        "t": 0,
+        "page": 17,
+        "anchor": "November 15, 1923"
+      },
+      {
+        "t": 1247,
+        "page": 18,
+        "anchor": "November 20, 1923"
+      },
+      {
+        "t": 1972,
+        "page": 19,
+        "anchor": "November 24, 1923"
+      }
+    ],
+    "8": [
+      {
+        "t": 0,
+        "page": 20,
+        "anchor": "November 28, 1923"
+      },
+      {
+        "t": 1563,
+        "page": 21,
+        "anchor": "December 4, 1923"
+      },
+      {
+        "t": 2437,
+        "page": 22,
+        "anchor": "December 6, 1923"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 23,
+        "anchor": "December 8, 1923"
+      },
+      {
+        "t": 1205,
+        "page": 24,
+        "anchor": "December 26, 1923"
+      },
+      {
+        "t": 2743,
+        "page": 25,
+        "anchor": "December 29, 1923"
+      }
+    ],
+    "10": [
+      {
+        "t": 0,
+        "page": 26,
+        "anchor": "January 4, 1924"
+      },
+      {
+        "t": 2728,
+        "page": 28,
+        "anchor": "January 20, 1924"
+      }
+    ],
+    "11": [
+      {
+        "t": 432,
+        "page": 29,
+        "anchor": "February 2, 1924"
+      },
+      {
+        "t": 3260,
+        "page": 29,
+        "anchor": "February 8, 1924"
+      }
+    ],
+    "12": [
+      {
+        "t": 735,
+        "page": 31,
+        "anchor": "February 16, 1924"
+      },
+      {
+        "t": 1325,
+        "page": 31,
+        "anchor": "February 18, 1924"
+      },
+      {
+        "t": 1774,
+        "page": 32,
+        "anchor": "February 20, 1924"
+      },
+      {
+        "t": 2281,
+        "page": 33,
+        "anchor": "February 22, 1924"
+      }
+    ],
+    "13": [
+      {
+        "t": 0,
+        "page": 34,
+        "anchor": "February 24, 1924"
+      },
+      {
+        "t": 2522,
+        "page": 36,
+        "anchor": "March 2, 1924"
+      },
+      {
+        "t": 3668,
+        "page": 37,
+        "anchor": "March 13, 1924"
+      }
+    ],
+    "14": [
+      {
+        "t": 0,
+        "page": 38,
+        "anchor": "March 19, 1924"
+      },
+      {
+        "t": 1061,
+        "page": 39,
+        "anchor": "March 22, 1924"
+      }
+    ],
+    "15": [
+      {
+        "t": 0,
+        "page": 39,
+        "anchor": "March 22, 1924"
+      },
+      {
+        "t": 930,
+        "page": 41,
+        "anchor": "April 8, 1924"
+      },
+      {
+        "t": 1336,
+        "page": 42,
+        "anchor": "April 11, 1924"
+      },
+      {
+        "t": 2190,
+        "page": 42,
+        "anchor": "April 23, 1924"
+      },
+      {
+        "t": 3724,
+        "page": 44,
+        "anchor": "May 13, 1924"
+      }
+    ],
+    "16": [
+      {
+        "t": 0,
+        "page": 45,
+        "anchor": "May 19, 1924"
+      },
+      {
+        "t": 756,
+        "page": 45,
+        "anchor": "May 24, 1924"
+      },
+      {
+        "t": 2479,
+        "page": 46,
+        "anchor": "May 29, 1924"
+      },
+      {
+        "t": 3249,
+        "page": 47,
+        "anchor": "June 1, 1924"
+      }
+    ],
+    "17": [
+      {
+        "t": 0,
+        "page": 48,
+        "anchor": "June 6, 1924"
+      }
+    ]
   },
   "17": {
-    "1": 1,
-    "2": 4,
-    "5": 14,
-    "6": 18,
-    "10": 28
+    "1": [
+      {
+        "t": 1445,
+        "page": 2,
+        "anchor": "June 14, 1924"
+      },
+      {
+        "t": 1939,
+        "page": 2,
+        "anchor": "June 20, 1924"
+      },
+      {
+        "t": 3307,
+        "page": 3,
+        "anchor": "July 16, 1924"
+      }
+    ],
+    "2": [
+      {
+        "t": 0,
+        "page": 4,
+        "anchor": "July 25, 1924"
+      },
+      {
+        "t": 873,
+        "page": 5,
+        "anchor": "July 29, 1924"
+      },
+      {
+        "t": 1300,
+        "page": 5,
+        "anchor": "August 9, 1924"
+      },
+      {
+        "t": 2585,
+        "page": 6,
+        "anchor": "August 14, 1924"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 7,
+        "anchor": "September 6, 1924"
+      },
+      {
+        "t": 779,
+        "page": 8,
+        "anchor": "September 11, 1924"
+      },
+      {
+        "t": 2808,
+        "page": 9,
+        "anchor": "September 17, 1924"
+      },
+      {
+        "t": 3411,
+        "page": 9,
+        "anchor": "September 18, 1924"
+      }
+    ],
+    "4": [
+      {
+        "t": 2558,
+        "page": 11,
+        "anchor": "October 6, 1924"
+      }
+    ],
+    "5": [
+      {
+        "t": 917,
+        "page": 13,
+        "anchor": "October 17, 1924"
+      },
+      {
+        "t": 2771,
+        "page": 14,
+        "anchor": "October 30, 1924"
+      }
+    ],
+    "6": [
+      {
+        "t": 1011,
+        "page": 16,
+        "anchor": "November 27, 1924"
+      },
+      {
+        "t": 3125,
+        "page": 17,
+        "anchor": "December 8, 1924"
+      },
+      {
+        "t": 4244,
+        "page": 18,
+        "anchor": "December 24, 1924"
+      }
+    ],
+    "7": [
+      {
+        "t": 1257,
+        "page": 21,
+        "anchor": "January 27, 1925"
+      },
+      {
+        "t": 2081,
+        "page": 21,
+        "anchor": "February 8, 1925"
+      },
+      {
+        "t": 2724,
+        "page": 22,
+        "anchor": "February 15, 1925"
+      }
+    ],
+    "8": [
+      {
+        "t": 86,
+        "page": 23,
+        "anchor": "February 22, 1925"
+      },
+      {
+        "t": 3274,
+        "page": 25,
+        "anchor": "March 8, 1925"
+      },
+      {
+        "t": 4578,
+        "page": 26,
+        "anchor": "March 15, 1925"
+      }
+    ],
+    "9": [
+      {
+        "t": 95,
+        "page": 26,
+        "anchor": "April 9, 1925"
+      },
+      {
+        "t": 3738,
+        "page": 27,
+        "anchor": "April 23, 1925"
+      }
+    ],
+    "10": [
+      {
+        "t": 121,
+        "page": 28,
+        "anchor": "April 26, 1925"
+      }
+    ],
+    "11": [
+      {
+        "t": 97,
+        "page": 31,
+        "anchor": "May 10, 1925"
+      },
+      {
+        "t": 2272,
+        "page": 33,
+        "anchor": "May 17, 1925"
+      }
+    ],
+    "12": [
+      {
+        "t": 88,
+        "page": 35,
+        "anchor": "May 30, 1925"
+      },
+      {
+        "t": 2937,
+        "page": 37,
+        "anchor": "June 11, 1925"
+      },
+      {
+        "t": 3814,
+        "page": 37,
+        "anchor": "June 18, 1925"
+      }
+    ],
+    "13": [
+      {
+        "t": 682,
+        "page": 39,
+        "anchor": "June 25, 1925"
+      },
+      {
+        "t": 2303,
+        "page": 40,
+        "anchor": "June 29, 1925"
+      },
+      {
+        "t": 3466,
+        "page": 42,
+        "anchor": "July 20, 1925"
+      }
+    ]
   },
   "18": {
-    "1": 2,
-    "4": 12,
-    "8": 24
+    "1": {
+      "page": 2,
+      "anchor": "all ordered around him – that man"
+    },
+    "2": [
+      {
+        "t": 81,
+        "page": 3,
+        "anchor": "September 16, 1925"
+      }
+    ],
+    "3": [
+      {
+        "t": 0,
+        "page": 7,
+        "anchor": "October 10, 1925"
+      },
+      {
+        "t": 1398,
+        "page": 7,
+        "anchor": "October 17, 1925"
+      },
+      {
+        "t": 2552,
+        "page": 8,
+        "anchor": "October 21, 1925"
+      }
+    ],
+    "4": [
+      {
+        "t": 83,
+        "page": 9,
+        "anchor": "October 24, 1925"
+      },
+      {
+        "t": 1814,
+        "page": 11,
+        "anchor": "November 1, 1925"
+      }
+    ],
+    "5": [
+      {
+        "t": 80,
+        "page": 14,
+        "anchor": "November 9, 1925"
+      },
+      {
+        "t": 670,
+        "page": 15,
+        "anchor": "November 12, 1925"
+      }
+    ],
+    "6": [
+      {
+        "t": 85,
+        "page": 16,
+        "anchor": "November 19, 1925"
+      },
+      {
+        "t": 1153,
+        "page": 17,
+        "anchor": "November 22, 1925"
+      }
+    ],
+    "7": [
+      {
+        "t": 90,
+        "page": 20,
+        "anchor": "December 20, 1925"
+      }
+    ],
+    "8": [
+      {
+        "t": 103,
+        "page": 22,
+        "anchor": "January 10, 1926"
+      },
+      {
+        "t": 1177,
+        "page": 24,
+        "anchor": "January 24, 1926"
+      },
+      {
+        "t": 2350,
+        "page": 25,
+        "anchor": "January 28, 1926"
+      }
+    ],
+    "9": [
+      {
+        "t": 80,
+        "page": 26,
+        "anchor": "January 30, 1926"
+      },
+      {
+        "t": 1282,
+        "page": 27,
+        "anchor": "February 7, 1926"
+      }
+    ],
+    "10": [
+      {
+        "t": 93,
+        "page": 30,
+        "anchor": "February 18, 1926"
+      },
+      {
+        "t": 730,
+        "page": 30,
+        "anchor": "February 21, 1926"
+      }
+    ]
   },
   "19": {
-    "1": 3,
-    "5": 16,
-    "6": 18,
-    "8": 25,
-    "13": 46,
-    "14": 48,
-    "15": 53,
-    "16": 54,
-    "17": 58,
-    "18": 62,
-    "19": 62,
-    "21": 71
+    "1": {
+      "page": 3,
+      "anchor": "I could have created It remaining"
+    },
+    "2": [
+      {
+        "t": 81,
+        "page": 5,
+        "anchor": "March 14, 1926"
+      },
+      {
+        "t": 1305,
+        "page": 7,
+        "anchor": "March 19, 1926"
+      }
+    ],
+    "4": [
+      {
+        "t": 78,
+        "page": 11,
+        "anchor": "April 4, 1926"
+      },
+      {
+        "t": 1233,
+        "page": 12,
+        "anchor": "April 9, 1926"
+      }
+    ],
+    "5": [
+      {
+        "t": 80,
+        "page": 15,
+        "anchor": "April 16, 1926"
+      },
+      {
+        "t": 1634,
+        "page": 16,
+        "anchor": "April 18, 1926"
+      },
+      {
+        "t": 2178,
+        "page": 17,
+        "anchor": "April 25, 1926"
+      }
+    ],
+    "6": {
+      "page": 18,
+      "anchor": "Therefore, having to call you"
+    },
+    "7": [
+      {
+        "t": 78,
+        "page": 20,
+        "anchor": "May 3, 1926"
+      },
+      {
+        "t": 1441,
+        "page": 21,
+        "anchor": "May 6, 1926"
+      }
+    ],
+    "8": [
+      {
+        "t": 76,
+        "page": 24,
+        "anchor": "May 13, 1926"
+      },
+      {
+        "t": 1963,
+        "page": 26,
+        "anchor": "May 18, 1926"
+      }
+    ],
+    "9": [
+      {
+        "t": 0,
+        "page": 27,
+        "anchor": "May 23, 1926"
+      },
+      {
+        "t": 1220,
+        "page": 28,
+        "anchor": "May 27, 1926"
+      }
+    ],
+    "10": [
+      {
+        "t": 83,
+        "page": 30,
+        "anchor": "May 31, 1926"
+      }
+    ],
+    "11": [
+      {
+        "t": 78,
+        "page": 35,
+        "anchor": "June 15, 1926"
+      }
+    ],
+    "12": [
+      {
+        "t": 66,
+        "page": 39,
+        "anchor": "June 21, 1926"
+      },
+      {
+        "t": 440,
+        "page": 39,
+        "anchor": "June 26, 1926"
+      },
+      {
+        "t": 1282,
+        "page": 40,
+        "anchor": "June 29, 1926"
+      }
+    ],
+    "13": [
+      {
+        "t": 73,
+        "page": 43,
+        "anchor": "July 2, 1926"
+      },
+      {
+        "t": 1712,
+        "page": 45,
+        "anchor": "July 5, 1926"
+      },
+      {
+        "t": 2136,
+        "page": 45,
+        "anchor": "July 8, 1926"
+      },
+      {
+        "t": 2718,
+        "page": 46,
+        "anchor": "July 11, 1926"
+      }
+    ],
+    "14": [
+      {
+        "t": 1476,
+        "page": 48,
+        "anchor": "July 18, 1926"
+      },
+      {
+        "t": 2770,
+        "page": 50,
+        "anchor": "July 20, 1926"
+      }
+    ],
+    "15": [
+      {
+        "t": 76,
+        "page": 50,
+        "anchor": "July 23, 1926"
+      },
+      {
+        "t": 1225,
+        "page": 52,
+        "anchor": "July 26, 1926"
+      },
+      {
+        "t": 2415,
+        "page": 52,
+        "anchor": "July 29, 1926"
+      }
+    ],
+    "16": [
+      {
+        "t": 2367,
+        "page": 56,
+        "anchor": "August 8, 1926"
+      }
+    ],
+    "17": [
+      {
+        "t": 87,
+        "page": 57,
+        "anchor": "August 12, 1926"
+      },
+      {
+        "t": 1055,
+        "page": 58,
+        "anchor": "August 14, 1926"
+      },
+      {
+        "t": 1894,
+        "page": 58,
+        "anchor": "August 18, 1926"
+      }
+    ],
+    "18": {
+      "page": 62,
+      "anchor": "my whole Life, just as"
+    },
+    "19": [
+      {
+        "t": 849,
+        "page": 63,
+        "anchor": "August 29, 1926"
+      },
+      {
+        "t": 1741,
+        "page": 62,
+        "anchor": "August 27, 1926"
+      },
+      {
+        "t": 1777,
+        "page": 64,
+        "anchor": "August 31, 1926"
+      }
+    ],
+    "20": [
+      {
+        "t": 76,
+        "page": 66,
+        "anchor": "September 5, 1926"
+      }
+    ],
+    "21": [
+      {
+        "t": 84,
+        "page": 70,
+        "anchor": "September 12, 1926"
+      },
+      {
+        "t": 1453,
+        "page": 71,
+        "anchor": "September 13, 1926"
+      },
+      {
+        "t": 2561,
+        "page": 73,
+        "anchor": "September 15, 1926"
+      }
+    ]
   }
 }
