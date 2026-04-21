@@ -60,19 +60,31 @@ book-of-heaven/
 │   ├── SPEC-edge-function.md
 │   ├── SPEC-auth.md
 │   ├── SPEC-chat-ui.md
-│   ├── SPEC-history.md
+│   ├── SPEC-history.md                  ← new Sidebar + ThreadRow
+│   ├── SPEC-projects.md                 ← Projects + per-project instructions
 │   └── local-dev-setup.md
 ├── frontend/
 │   ├── src/
 │   │   ├── lib/
-│   │   │   └── supabase.ts              ← Supabase client singleton
+│   │   │   ├── supabase.ts              ← Supabase client singleton
+│   │   │   ├── WorkspaceContext.tsx     ← shared projects + threads state
+│   │   │   ├── ids.ts                   ← thread UUID generator
+│   │   │   └── time.ts                  ← relative time + Recents bucketing
 │   │   ├── components/
 │   │   │   ├── AuthPage.tsx
 │   │   │   ├── ChatWindow.tsx
-│   │   │   ├── HistorySidebar.tsx
-│   │   │   └── CitationBadge.tsx
-│   │   ├── App.tsx                      ← route between auth/chat
-│   │   ├── main.tsx
+│   │   │   ├── CitationBadge.tsx
+│   │   │   ├── Icons.tsx                ← shared SVG icons
+│   │   │   ├── Modal.tsx                ← confirm / alert modal + provider
+│   │   │   ├── Sidebar.tsx              ← permanent left rail
+│   │   │   └── ThreadRow.tsx            ← thread row + ⋯ action menu
+│   │   ├── routes/
+│   │   │   ├── ProtectedLayout.tsx      ← wraps WorkspaceProvider + Sidebar + <Outlet />
+│   │   │   ├── ChatPage.tsx             ← /, /c/:threadId
+│   │   │   ├── ProjectsPage.tsx         ← /projects (grid)
+│   │   │   └── ProjectDetailPage.tsx    ← /projects/:id
+│   │   ├── App.tsx                      ← auth gate + react-router routes
+│   │   ├── main.tsx                     ← ModalProvider + <App />
 │   │   └── index.css                    ← Tailwind directives
 │   ├── .env
 │   ├── .env.example
@@ -83,7 +95,10 @@ book-of-heaven/
 │   ├── config.toml                      ← ports shifted to 5433x range
 │   ├── migrations/
 │   │   ├── 001_chat_messages.sql        ← initial table + RLS
-│   │   └── 002_thread_id.sql            ← adds thread_id uuid column
+│   │   ├── 002_thread_id.sql            ← adds thread_id uuid column
+│   │   ├── 003_chat_threads.sql         ← per-thread title metadata
+│   │   ├── 004_chat_organization.sql    ← chat_projects + project_id (+ historical Labels tables)
+│   │   └── 005_projects_redesign.sql    ← drops Labels, adds description + instructions + pinned_at
 │   └── functions/
 │       └── chat-proxy/
 │           └── index.ts
@@ -124,7 +139,13 @@ create index on chat_messages (user_id, thread_id, created_at);
 ```
 
 ### Thread model
-A **thread** is a set of messages sharing the same `thread_id`. UUIDs are minted by the frontend the first time a user sends a message in a fresh chat and reused for every subsequent message in that conversation. Clicking **New Chat** mints a brand-new `thread_id` so same-day conversations stay visually and logically separate. See `SPEC-history.md` and `SPEC-chat-ui.md` for how the client and sidebar consume this column.
+A **thread** is a set of messages sharing the same `thread_id`. UUIDs are minted by the frontend the first time a user sends a message in a fresh chat and reused for every subsequent message in that conversation. Clicking **New chat** mints a brand-new `thread_id` so same-day conversations stay visually and logically separate. See `SPEC-history.md` and `SPEC-chat-ui.md` for how the client and sidebar consume this column.
+
+### Projects
+Threads can optionally belong to a **project** (`chat_threads.project_id`). Projects are user-owned folders with a `name`, optional `description`, and optional `instructions` (a system prompt the edge function prepends to every message sent in a thread that belongs to the project). A thread belongs to at most one project. See `SPEC-projects.md` for schema and UI details.
+
+### Pinning
+Threads can be pinned with `chat_threads.pinned_at` (non-null timestamp). Pinned threads surface in the sidebar's Pinned section, sorted by most recently pinned.
 
 ---
 
@@ -133,23 +154,35 @@ A **thread** is a set of messages sharing the same `thread_id`. UUIDs are minted
 ```
 User types message
       ↓
-ChatWindow.tsx — mints thread_id if new chat, POSTs { message, thread_id } with user JWT
+ChatWindow.tsx — mints thread_id if new chat, POSTs { message, thread_id, project_id? }
+                 with user JWT. project_id is only sent when the message originated
+                 on a project detail page.
       ↓
-chat-proxy/index.ts — validates JWT, validates thread_id is a UUID
+chat-proxy/index.ts — validates JWT, validates thread_id (+ project_id if present) as UUIDs
       ↓
 Edge Function — inserts user row (with thread_id) into chat_messages
       ↓
-Edge Function — forwards message to AnythingLLM /stream-chat, aggregates SSE
+Edge Function — upserts chat_threads (ignoreDuplicates), stamping project_id on creation
+      ↓
+Edge Function — reads chat_threads.project_id back, fetches chat_projects.instructions
+                 if the thread is in a project. Prepends instructions to the message
+                 as a system-style preamble.
+      ↓
+Edge Function — forwards composed message to AnythingLLM /stream-chat, aggregates SSE
+                 (in parallel with a title-generation call when the thread has no title yet)
       ↓
 AnythingLLM — searches 612 embedded transcripts, calls Claude, streams back
       ↓
 Edge Function — inserts assistant row (same thread_id) into chat_messages
       ↓
-Edge Function — returns { reply, thread_id } (non-streaming public contract)
+Edge Function — updates chat_threads.title if one was generated this turn
+      ↓
+Edge Function — returns { reply, thread_id, title? } (non-streaming public contract)
       ↓
 ChatWindow.tsx — renders reply as markdown with CitationBadge highlights
       ↓
-App.tsx — bumps history refreshToken; HistorySidebar re-queries and shows the new/updated thread
+ChatPage.tsx — calls WorkspaceContext.refresh(); Sidebar + pages re-render with the
+               new thread and its freshly-generated title
 ```
 
 ---
@@ -169,22 +202,36 @@ App.tsx — bumps history refreshToken; HistorySidebar re-queries and shows the 
 
 ## UI Layout
 
+The app is a single shell with a permanent left sidebar. The right pane swaps based on the route:
+
 ```
-┌─────────────────────────────────────────────────┐
-│  📖 Book of Heaven          [user@email] [logout]│
-├──────────────────┬──────────────────────────────┤
-│                  │                              │
-│  History         │   Chat Window                │
-│  Sidebar         │                              │
-│                  │   [previous messages]        │
-│  • Soul who...   │                              │
-│  • Luisa says... │   [user bubble]              │
-│  • Key Reqs...   │   [assistant bubble          │
-│                  │    with citation badges]     │
-│  + New Chat      │                              │
-│                  │   [message input bar]        │
-└──────────────────┴──────────────────────────────┘
+Route                    Right pane
+/                        ChatPage (no thread selected yet; input ready)
+/c/:threadId             ChatPage (loads that thread's messages)
+/projects                ProjectsPage (grid of project cards + New project)
+/projects/:id            ProjectDetailPage (title, description, instructions, chat input, threads)
 ```
+
+```
+┌─────────────┬─────────────────────────────────────────────────┐
+│ + New chat  │                                                 │
+│ 📁 Projects │   (right pane per route)                        │
+│             │                                                 │
+│ PINNED      │                                                 │
+│ · Thread X📌│                                                 │
+│             │                                                 │
+│ RECENTS     │                                                 │
+│ Today       │                                                 │
+│ · Thread A  │                                                 │
+│ Yesterday   │                                                 │
+│ · Thread B  │                                                 │
+│             │                                                 │
+│ user@email  │                                                 │
+│   [Log out] │                                                 │
+└─────────────┴─────────────────────────────────────────────────┘
+```
+
+See `SPEC-history.md` for sidebar details and `SPEC-projects.md` for the project pages.
 
 ---
 

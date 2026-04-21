@@ -51,25 +51,45 @@ Anthropic Claude API          ← claude-haiku-4-5
 ```
 book-of-heaven/
 ├── README.md
-├── frontend/                  # React + Vite app
+├── frontend/                        # React + Vite app (react-router)
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── AuthPage.tsx
 │   │   │   ├── ChatWindow.tsx
-│   │   │   ├── HistorySidebar.tsx
-│   │   │   └── CitationHighlight.tsx
+│   │   │   ├── CitationBadge.tsx
+│   │   │   ├── Icons.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   ├── Sidebar.tsx          # permanent left rail
+│   │   │   └── ThreadRow.tsx        # row + ⋯ action menu
+│   │   ├── routes/
+│   │   │   ├── ProtectedLayout.tsx  # WorkspaceProvider + Sidebar + <Outlet />
+│   │   │   ├── ChatPage.tsx         # /, /c/:threadId
+│   │   │   ├── ProjectsPage.tsx     # /projects
+│   │   │   └── ProjectDetailPage.tsx # /projects/:id
 │   │   ├── lib/
-│   │   │   └── supabase.ts
-│   │   └── App.tsx
+│   │   │   ├── supabase.ts
+│   │   │   ├── WorkspaceContext.tsx # shared projects + threads state
+│   │   │   ├── ids.ts
+│   │   │   └── time.ts
+│   │   ├── App.tsx                  # auth gate + BrowserRouter
+│   │   └── main.tsx
 │   ├── .env.example
 │   └── package.json
 ├── supabase/
 │   ├── migrations/
-│   │   └── 001_chat_messages.sql
+│   │   ├── 001_chat_messages.sql
+│   │   ├── 002_thread_id.sql
+│   │   ├── 003_chat_threads.sql
+│   │   ├── 004_chat_organization.sql
+│   │   └── 005_projects_redesign.sql
 │   └── functions/
 │       └── chat-proxy/
 │           └── index.ts
 └── docs/
+    ├── SPEC.md
+    ├── SPEC-edge-function.md
+    ├── SPEC-history.md              # sidebar + thread rows
+    ├── SPEC-projects.md             # projects grid + detail + instructions
     ├── vps-setup.md
     ├── anythingllm-config.md
     └── deployment.md
@@ -167,8 +187,9 @@ The Edge Function:
 - [ ] Install `@supabase/supabase-js` and `@supabase/auth-ui-react`
 - [ ] Build `AuthPage` — sign up / sign in with Supabase Auth UI
 - [ ] Build `ChatWindow` — message input, scrollable thread, loading states
-- [ ] Build `HistorySidebar` — user's past conversations from DB
-- [ ] Build `CitationHighlight` — renders `[Volume X – Number Y]` as styled badges
+- [ ] Build `Sidebar` + `ThreadRow` — pinned + recents, per-row ⋯ menu
+- [ ] Build `ProjectsPage` / `ProjectDetailPage` — grid + per-project instructions
+- [ ] Build `CitationBadge` — renders `[Volume X – Number Y]` as styled badges
 - [ ] Configure `.env` with Supabase URL + anon key
 - [ ] Deploy to Vercel
 

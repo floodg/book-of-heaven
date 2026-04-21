@@ -1,0 +1,159 @@
+.thread-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px 7px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
+}
+
+.thread-row-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-row:hover {
+  background: rgba(146, 64, 14, 0.06);
+}
+
+.thread-row-active,
+.thread-row-active:hover {
+  background: rgba(146, 64, 14, 0.12);
+  color: #3a1a00;
+  font-weight: 500;
+}
+
+.thread-row-in-dark:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.thread-row-in-dark.thread-row-active,
+.thread-row-in-dark.thread-row-active:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.thread-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.thread-row-in-dark .thread-row-meta {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.thread-row-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 4px;
+  opacity: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.1s, background-color 0.1s;
+}
+
+.thread-row:hover .thread-row-menu-btn,
+.thread-row-active .thread-row-menu-btn,
+.thread-row-menu-btn[data-open='true'] {
+  opacity: 1;
+}
+
+.thread-row-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.thread-row-in-dark .thread-row-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.thread-row-menu {
+  position: absolute;
+  top: 100%;
+  right: 6px;
+  margin-top: 2px;
+  z-index: 20;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(28, 10, 0, 0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  color: #2a1408;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.thread-row-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.thread-row-menu-item:hover {
+  background: #faf2e5;
+}
+
+.thread-row-menu-item.thread-row-menu-item-danger {
+  color: #b91c1c;
+}
+
+.thread-row-menu-item.thread-row-menu-item-danger:hover {
+  background: #fdecec;
+}
+
+.thread-row-menu-separator {
+  height: 1px;
+  background: #e7d5b3;
+  margin: 4px 2px;
+}
+
+.thread-row-menu-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(74, 46, 24, 0.6);
+  padding: 6px 10px 4px 10px;
+}
+
+.thread-row-menu-empty {
+  padding: 6px 10px 8px 10px;
+  color: rgba(74, 46, 24, 0.6);
+  font-style: italic;
+}
+
+.thread-row-submenu {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}

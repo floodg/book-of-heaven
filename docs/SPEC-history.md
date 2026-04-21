@@ -1,129 +1,130 @@
-# Spec: History Sidebar
+# Spec: Sidebar
 
-## File
-`frontend/src/components/HistorySidebar.tsx`
+## Files
+- `frontend/src/components/Sidebar.tsx` — the sidebar shell
+- `frontend/src/components/ThreadRow.tsx` — reusable row + `⋯` menu
+- `frontend/src/lib/WorkspaceContext.tsx` — shared projects/threads data
+- `frontend/src/lib/time.ts` — relative time + Recents bucketing
 
 ---
 
 ## Purpose
-Left sidebar showing the current user's past conversations, grouped by recency. Allows switching between threads, starting new ones, and deleting individual threads.
+Permanent left rail that lets the user:
+
+1. Start a fresh chat (`New chat`).
+2. Jump to the `Projects` landing page.
+3. See their pinned threads and recent threads, bucketed by age.
+4. Rename / move / pin / unpin / delete a thread via a `⋯` action menu on each row.
+
+The sidebar is not where projects are *managed* anymore — all project CRUD and per-project settings live on the `Projects` grid page and the per-project detail page. See `SPEC-projects.md`.
 
 ---
 
-## Props
+## Data source
+
+The sidebar (and every page that cares about threads or projects) reads from a single React context:
+
 ```typescript
-interface HistorySidebarProps {
-  user: User
-  activeThreadId: string | null         // UUID of the active thread, or null for a fresh "New Chat" state
-  onSelectThread: (threadId: string, firstMessage: string) => void
-  onNewThread: () => void
-  onThreadDeleted: (threadId: string) => void
-  refreshToken: number                  // bump from App.tsx to force a re-query after a new assistant response
-}
+const workspace = useWorkspace()
+// workspace.projects: Project[]
+// workspace.threads:  Thread[]
+// workspace.refresh(): Promise<void>
+// workspace.{pinThread,unpinThread,deleteThread,moveThreadToProject,…}
 ```
+
+`WorkspaceProvider` sits inside `ProtectedLayout`, so there is exactly one copy of the projects/threads state across the whole authenticated app. Mutations update local state optimistically and also write to Supabase; a full `refresh()` is used after the chat-proxy responds so the new thread + LLM-generated title show up without the sidebar falling out of sync.
+
+On mount (and when `refresh()` is called) the provider issues three parallel queries:
+
+```typescript
+const [messagesRes, threadsRes, projectsRes] = await Promise.all([
+  supabase.from('chat_messages')
+    .select('thread_id, role, content, created_at')
+    .eq('user_id', user.id),
+  supabase.from('chat_threads')
+    .select('thread_id, title, project_id, pinned_at, created_at, updated_at')
+    .eq('user_id', user.id),
+  supabase.from('chat_projects')
+    .select('id, name, description, instructions, created_at, updated_at')
+    .eq('user_id', user.id),
+])
+```
+
+`assembleThreads()` then walks the message rows once to compute per-thread {firstMessage, firstMessageAt, lastMessageAt}, merges in the `chat_threads` row (title, project_id, pinned_at), and returns a single `Thread[]` sorted by `lastMessageAt` desc.
 
 ---
 
-## Data
+## Thread fallback titles
 
-### Thread concept
-Each thread is identified by a `thread_id uuid` column on `chat_messages`. The UUID is minted by the frontend the first time a user sends a message in a fresh chat (see `SPEC-chat-ui.md`), passed through the Edge Function, and stored on both the user row and the assistant row.
-
-This replaces the earlier v1 simplification where a thread was defined as "all messages from the same calendar day". That approach merged every same-day conversation into one bucket, so clicking "New Chat" within the same day silently continued the existing thread. The real `thread_id` column keeps every "New Chat" click as its own independent conversation, regardless of date.
-
-The `"Today" / "Yesterday" / "This week" / "Earlier"` grouping labels are still derived from `created_at`, but each group can now contain multiple distinct threads.
-
-### Query
-```typescript
-const { data } = await supabase
-  .from('chat_messages')
-  .select('id, content, created_at, thread_id')
-  .eq('user_id', user.id)
-  .eq('role', 'user')
-  .order('created_at', { ascending: true })
-  .limit(500)
-```
-
-Client-side:
-1. Bucket rows by `thread_id`
-2. Within each bucket, keep the **earliest** user message as the thread title and its `created_at` as the thread timestamp
-3. Sort threads newest-first by that first-message timestamp
-4. Group by recency label ("Today", "Yesterday", "This week", "Earlier") using `created_at`
-
-`.limit(500)` is a rough ceiling on total user messages fetched per load. If any user regularly exceeds this, we'll move to a `threads` view that returns one row per `thread_id` with the first message already joined.
+When `chat_threads.title` is still null (brand-new thread waiting on title generation, or a thread the edge function never got a chance to title), the sidebar falls back to a client-side heuristic on the first user message (`humanizeFirstMessage`): trims whitespace, strips common conversational lead-ins (`hi`, `hello`, `please`, …), capitalizes the first letter, and hard-caps to 44 chars with an ellipsis. Every row renders through the same `labelForThread(thread)` helper so the fallback is consistent across the sidebar, Pinned section, and the project detail page's thread list.
 
 ---
 
 ## Layout
 
 ```
-┌─────────────────────┐
-│  Book of Heaven     │
-│                     │
-│  [+ New Chat]       │
-│                     │
-│  Today              │
-│  • Soul who lives…  ← active, highlighted
-│  • Luisa on mercy…  │
-│                     │
-│  Yesterday          │
-│  • Luisa says…      │
-│  • Key requireme…   │
-│                     │
-│  Earlier            │
-│  • Primary themes…  │
-│  • The sublimity…   │
-│                     │
-└─────────────────────┘
+┌────────────────────────────┐
+│  + New chat                │
+│  📁 Projects               │
+│                            │
+│  PINNED                    │
+│  · Pinned thread A     📌  │
+│  · Pinned thread B     📌  │
+│                            │
+│  RECENTS                   │
+│  Today                     │
+│  · Thread 1            📁  │
+│  · Thread 2                │
+│  Yesterday                 │
+│  · Thread 3                │
+│  Previous 7 days           │
+│  · Thread 4                │
+│  March                     │
+│  · …                       │
+│                            │
+│  user@email      [Log out] │
+└────────────────────────────┘
 ```
 
-Hovering a thread row reveals a trash icon at the right edge for deletion.
+The Pinned section is hidden entirely when no threads are pinned.
+
+Recents buckets in order: `Today`, `Yesterday`, `Previous 7 days`, `Previous 30 days`, then a month label (with year when different from current year) for older items. A thread inside a project still appears in Recents — Projects are not a filter, they are just an extra grouping.
 
 ---
 
-## Behaviour
+## Row actions (`⋯` menu on each thread)
 
-- Active thread highlighted with warm brown background + white text
-- Hover state on inactive threads: light warm tint; trash icon fades in
-- Thread title = first 40 chars of the earliest user message for that `thread_id`, truncated with ellipsis
-- Grouping labels: "Today", "Yesterday", "This week", "Earlier" — computed from the thread's first message `created_at`
-- **New Chat** button at top: calls `onNewThread()` which clears `activeThreadId` to `null`, resetting ChatWindow to an empty state. The next message submission mints a new `thread_id` UUID.
-- **Thread click**: calls `onSelectThread(threadId, firstMessage)` which loads that thread's messages into ChatWindow via `thread_id` equality (no date range).
-- **Delete thread**:
-  - Hovering a thread reveals a trash icon
-  - Clicking it shows `window.confirm()` with a preview of the thread title
-  - On confirm, issues `delete from chat_messages where user_id = ? and thread_id = ?` (RLS policy also enforces `user_id = auth.uid()`)
-  - On success: removes the thread locally and calls `onThreadDeleted(threadId)` so `App.tsx` can clear `activeThreadId` if it matched the deleted thread and refresh the sidebar
+Single popover with three sections:
+
+1. **Pin / Unpin** — writes `chat_threads.pinned_at` (now / null). Pinned threads float to the Pinned section, sorted by most recently pinned.
+2. **Move to project…** → submenu listing all projects plus (if the thread is currently in one) a "Remove from project" shortcut at the top.
+3. **Delete** — confirm modal, then wipes `chat_messages` + `chat_threads` for that thread. If the user was looking at the deleted thread, the row navigates them back to `/`.
+
+Every mutation runs optimistically; the provider rolls back local state if the Supabase write fails and surfaces an alert via `useModal()`.
 
 ---
 
 ## Styling
 
-- Width: 256px, fixed, not collapsible in v1
-- Background: `#1c0a00` (deep dark brown) — sidebar is dark, main area is light
-- Text: `#f5e6d3` (warm cream)
-- Active item: `#92400e` background, white text
-- Hover item: `rgba(255,255,255,0.08)` background
-- Group labels: `#a07850` (muted gold), uppercase, small, semibold, letter-spacing
-- New Chat button: outlined style, cream border, cream text, hover fills with brown tint
-- Thread titles: small, truncated, cursor-pointer
-- Trash icon: 14×14, appears on hover/focus of the row, warm red on hover
+- Width: 260px, fixed.
+- Background: `#2a1408` (deep brown), text `#f5e9d8`.
+- Active route: `rgba(255,255,255,0.12)` tint (sidebar links use `<NavLink>`).
+- Hover: `rgba(255,255,255,0.06)` tint.
+- Section headers ("PINNED", "RECENTS"): `11px`, uppercase, letter-spaced, low-alpha cream.
+- Bucket headers ("Today", "Yesterday", etc.): `11px`, lower-alpha.
+- Row `⋯` button: `opacity: 0` by default, fades in on row hover or when its menu is open.
+- Footer: user email (ellipsized) + `Log out` button. Replaces the old top-of-page header.
 
 ---
 
-## Loading state
-Show 4–5 skeleton placeholder rows with an animated pulse while fetching.
+## Loading + empty states
 
----
-
-## Empty state
-If the user has no messages yet, show a small icon with text:
-"No conversations yet. Ask your first question below."
+- Loading: `"Loading…"` placeholder. Parallel queries typically resolve in under 100ms on local Supabase so a skeleton isn't worth it.
+- No conversations yet: inline empty text inside Recents, prompting the user to click **New chat**.
+- No pinned threads: the section renders nothing (no "no pinned threads" placeholder — keeps the chrome quiet).
 
 ---
 
 ## Refresh behaviour
-After each new assistant response in ChatWindow, `App.tsx` increments a `historyRefresh` counter and passes it as the `refreshToken` prop. `HistorySidebar` re-runs its query whenever `refreshToken` changes, so:
 
-- A brand-new thread appears in "Today" immediately after its first assistant reply
-- A deleted thread disappears immediately after the `delete` call succeeds, without a full page reload
+Every mutation that originates in the sidebar updates the provider's state directly, so no explicit refresh is needed. The only automatic refresh happens after a chat-proxy response: `ChatPage` calls `workspace.refresh()` so the new thread row + its freshly-generated title appear in Recents without a full page reload.

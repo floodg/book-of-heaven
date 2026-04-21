@@ -22,59 +22,16 @@
 }
 
 .app-shell {
-  min-height: 100svh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   background: #faf7f2;
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: #ffffff;
-  border-bottom: 1px solid #e7d5b3;
-}
-
-.app-header-title {
-  font-family: 'Lora', 'Playfair Display', Georgia, serif;
-  font-size: 22px;
-  font-weight: 600;
-  color: #1c0a00;
-  margin: 0;
-  letter-spacing: -0.2px;
-}
-
-.app-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.app-header-user {
-  font-size: 13px;
-  color: #6b5a4a;
-}
-
-.app-logout {
-  background: transparent;
-  color: #92400e;
-  border: 1px solid #92400e;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.app-logout:hover {
-  background: #92400e;
-  color: #ffffff;
+  overflow: hidden;
 }
 
 .app-main {
   flex: 1;
   display: flex;
   min-height: 0;
+  min-width: 0;
 }

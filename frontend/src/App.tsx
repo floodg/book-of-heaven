@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import { useEffect, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { AuthPage } from './components/AuthPage'
-import { ChatWindow } from './components/ChatWindow'
-import { HistorySidebar } from './components/HistorySidebar'
+import { ProtectedLayout } from './routes/ProtectedLayout'
+import { ChatPage } from './routes/ChatPage'
+import { ProjectsPage } from './routes/ProjectsPage'
+import { ProjectDetailPage } from './routes/ProjectDetailPage'
 import './App.css'
 
 function App() {
@@ -62,71 +65,20 @@ function App() {
     return <AuthPage />
   }
 
-  return <MainLayout user={session.user} session={session} />
-}
-
-interface MainLayoutProps {
-  user: User
-  session: Session
-}
-
-function MainLayout({ user, session }: MainLayoutProps) {
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
-  const [historyRefresh, setHistoryRefresh] = useState(0)
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-  }
-
-  const handleSelectThread = useCallback((threadId: string) => {
-    setActiveThreadId(threadId)
-  }, [])
-
-  const handleNewThread = useCallback(() => {
-    setActiveThreadId(null)
-  }, [])
-
-  const handleAssistantResponse = useCallback(
-    (threadId: string) => {
-      setActiveThreadId((prev) => prev ?? threadId)
-      setHistoryRefresh((n) => n + 1)
-    },
-    [],
-  )
-
-  const handleThreadDeleted = useCallback((threadId: string) => {
-    setActiveThreadId((prev) => (prev === threadId ? null : prev))
-    setHistoryRefresh((n) => n + 1)
-  }, [])
-
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <h1 className="app-header-title">Book of Heaven</h1>
-        <div className="app-header-actions">
-          <span className="app-header-user">{user.email}</span>
-          <button type="button" className="app-logout" onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
-      </header>
-      <main className="app-main">
-        <HistorySidebar
-          user={user}
-          activeThreadId={activeThreadId}
-          onSelectThread={handleSelectThread}
-          onNewThread={handleNewThread}
-          onThreadDeleted={handleThreadDeleted}
-          refreshToken={historyRefresh}
-        />
-        <ChatWindow
-          user={user}
-          session={session}
-          threadId={activeThreadId}
-          onAssistantResponse={handleAssistantResponse}
-        />
-      </main>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          element={<ProtectedLayout user={session.user} session={session} />}
+        >
+          <Route index element={<ChatPage />} />
+          <Route path="c/:threadId" element={<ChatPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 

@@ -1,22 +1,42 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import { supabase } from '../lib/supabase'
+import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
+import { IconFolder } from './Icons'
 import './ChatWindow.css'
 
-function generateThreadId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  // Fallback for older runtimes: RFC4122-ish v4 UUID built from Math.random.
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
 }
+
+// Module-level cache of "messages I just rendered locally for thread X".
+// The chat flow is: user submits a message on "/" or /projects/:id, we mint a
+// thread UUID, render both bubbles client-side, then navigate to `/c/:id` so
+// the URL reflects the real thread. React Router unmounts the current
+// ChatWindow during that navigation and remounts a new one for the new route,
+// which kicks off a Supabase fetch for the thread's messages. Without this
+// cache, the chat area briefly goes blank (fresh component, empty state)
+// until the DB round-trip lands — visible ~50-200ms flicker right after the
+// assistant finishes speaking.
+//
+// We stash the just-rendered messages here keyed by thread id. The remounted
+// ChatWindow finds them and seeds state from the cache instead of from the
+// DB, then deletes the entry. Cache entries also auto-expire so a stale
+// navigation (e.g. back button hours later) still goes through the normal
+// fetch path.
+interface FreshThreadCacheEntry {
+  messages: Message[]
+  ts: number
+}
+const freshThreadCache = new Map<string, FreshThreadCacheEntry>()
+const FRESH_THREAD_CACHE_TTL_MS = 10_000
 
 // highlightCitations recursively descends into nested children, so we only
 // need to apply it at block level. Applying it at both block and inline
@@ -40,20 +60,32 @@ interface ChatWindowProps {
   user: User
   session: Session
   threadId: string | null
+  /** When set, and this is the very first message in the thread, the edge
+   *  function stamps the new thread with this project_id. Ignored once the
+   *  thread already exists on the server. */
+  projectId?: string | null
+  /** If present, auto-submit this as the thread's first user message on
+   *  mount. Used by the project detail page, which generates the thread
+   *  UUID then hands control off to ChatWindow. */
+  initialMessage?: string | null
+  /** Small breadcrumb shown above the messages when the active thread
+   *  belongs to a project. Purely presentational; ChatPage looks these
+   *  up from WorkspaceContext + route state and passes them in. */
+  breadcrumb?: {
+    projectId: string
+    projectName: string
+    threadTitle?: string | null
+  } | null
   onAssistantResponse?: (threadId: string) => void
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  created_at: string
 }
 
 export function ChatWindow({
   user,
   session,
   threadId,
+  projectId,
+  initialMessage,
+  breadcrumb,
   onAssistantResponse,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([])
@@ -65,6 +97,12 @@ export function ChatWindow({
   // refetch that would otherwise replace our just-added local messages with
   // identical DB rows (and briefly flicker).
   const skipNextFetchForRef = useRef<string | null>(null)
+  // initialMessage auto-submit fires exactly once per "initial message payload".
+  // Without this guard, StrictMode double-mounts would submit twice, and any
+  // re-render after the first submit would also re-fire. We key the ref by the
+  // message string so navigating to a fresh project detail → submit cycle with
+  // a different draft still works.
+  const autoSubmittedRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +116,18 @@ export function ChatWindow({
       skipNextFetchForRef.current = null
       return
     }
+
+    // Consume a fresh-thread cache entry if one exists for this thread. This
+    // covers the "just submitted the first message on / or /projects/:id,
+    // routed to /c/:id, remounted" path — we skip the DB fetch and seed
+    // state from what the previous ChatWindow instance just rendered.
+    const cached = freshThreadCache.get(threadId)
+    if (cached && Date.now() - cached.ts < FRESH_THREAD_CACHE_TTL_MS) {
+      freshThreadCache.delete(threadId)
+      setMessages(cached.messages)
+      return
+    }
+    if (cached) freshThreadCache.delete(threadId)
 
     supabase
       .from('chat_messages')
@@ -103,10 +153,8 @@ export function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const trimmed = input.trim()
-    if (!trimmed || loading) return
+  const submitMessage = async (messageText: string) => {
+    if (!messageText || loading) return
 
     const isNewThread = !threadId
     const submitThreadId = threadId ?? generateThreadId()
@@ -115,13 +163,26 @@ export function ChatWindow({
     const userMessage: Message = {
       id: `local-${Date.now()}`,
       role: 'user',
-      content: trimmed,
+      content: messageText,
       created_at: now,
     }
 
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setLoading(true)
+
+    // Always forward project_id when the caller handed us one. We can't use
+    // `isNewThread` as a gate because ProjectDetailPage mints the UUID in
+    // advance (and puts it in the URL) before ChatWindow mounts — so by the
+    // time we get here, threadId is already set and isNewThread is false
+    // even though the chat_threads row doesn't exist server-side yet. The
+    // edge function's upsert uses ignoreDuplicates, so sending project_id
+    // for an already-existing thread is a safe no-op.
+    const body: Record<string, unknown> = {
+      message: messageText,
+      thread_id: submitThreadId,
+    }
+    if (projectId) body.project_id = projectId
 
     try {
       const res = await fetch(
@@ -132,7 +193,7 @@ export function ChatWindow({
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ message: trimmed, thread_id: submitThreadId }),
+          body: JSON.stringify(body),
         },
       )
 
@@ -205,7 +266,20 @@ export function ChatWindow({
         content: replyText,
         created_at: new Date().toISOString(),
       }
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages((prev) => {
+        const next = [...prev, assistantMessage]
+        // For fresh threads, stash the full rendered conversation so the
+        // remounted ChatWindow (after navigating to /c/:id) can seed state
+        // from this snapshot instead of showing an empty pane during the
+        // DB round-trip.
+        if (isNewThread) {
+          freshThreadCache.set(submitThreadId, {
+            messages: next,
+            ts: Date.now(),
+          })
+        }
+        return next
+      })
       if (isNewThread) {
         skipNextFetchForRef.current = submitThreadId
       }
@@ -227,8 +301,96 @@ export function ChatWindow({
     }
   }
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const trimmed = input.trim()
+    if (!trimmed) return
+    void submitMessage(trimmed)
+  }
+
+  // Auto-submit the initial message handed down from a project detail page.
+  // Runs exactly once per distinct initialMessage value — see autoSubmittedRef.
+  useEffect(() => {
+    if (!initialMessage) return
+    const trimmed = initialMessage.trim()
+    if (!trimmed) return
+    if (autoSubmittedRef.current === trimmed) return
+    autoSubmittedRef.current = trimmed
+    void submitMessage(trimmed)
+    // submitMessage is stable-enough in practice (closes over current state)
+    // but listing it in deps would fire infinite submits; the ref guard is
+    // what actually enforces once-per-mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage])
+
+  // "Empty landing" layout: no messages yet, not currently loading a reply,
+  // and not mid-auto-submit from ProjectDetailPage. In that state the input
+  // lives centered under a greeting; the moment the first exchange starts
+  // we fall through to the normal layout with the bar pinned at the bottom.
+  const isEmpty =
+    messages.length === 0 && !loading && !initialMessage && !threadId
+
+  const inputBar = (
+    <form className="chat-input-bar" onSubmit={handleSubmit}>
+      <div className="chat-input-bar-inner">
+        <input
+          type="text"
+          className="chat-input"
+          placeholder="Ask about the Book of Heaven..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={loading}
+          autoFocus
+        />
+        <button
+          type="submit"
+          className="chat-send"
+          disabled={loading || input.trim().length === 0}
+        >
+          Send
+        </button>
+      </div>
+    </form>
+  )
+
+  const breadcrumbBar = breadcrumb ? (
+    <div className="chat-breadcrumb">
+      <div className="chat-breadcrumb-inner">
+        <Link
+          to={`/projects/${breadcrumb.projectId}`}
+          className="chat-breadcrumb-project"
+          title={`Back to ${breadcrumb.projectName}`}
+        >
+          <IconFolder size={13} />
+          <span>{breadcrumb.projectName}</span>
+        </Link>
+        {breadcrumb.threadTitle ? (
+          <>
+            <span className="chat-breadcrumb-separator">/</span>
+            <span className="chat-breadcrumb-thread">{breadcrumb.threadTitle}</span>
+          </>
+        ) : null}
+      </div>
+    </div>
+  ) : null
+
+  if (isEmpty) {
+    return (
+      <div className="chat-window chat-window-empty">
+        {breadcrumbBar}
+        <div className="chat-empty-center">
+          <div className="chat-empty-inner">
+            <h1 className="chat-empty-greeting">How can I help you today?</h1>
+            {inputBar}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="chat-window">
+      {breadcrumbBar}
       <div className="chat-messages">
         <div className="chat-messages-inner">
           {messages.map((message) => (
@@ -276,26 +438,7 @@ export function ChatWindow({
         </div>
       </div>
 
-      <form className="chat-input-bar" onSubmit={handleSubmit}>
-        <div className="chat-input-bar-inner">
-          <input
-            type="text"
-            className="chat-input"
-            placeholder="Ask about the Book of Heaven..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="chat-send"
-            disabled={loading || input.trim().length === 0}
-          >
-            Send
-          </button>
-        </div>
-      </form>
+      {inputBar}
     </div>
   )
 }

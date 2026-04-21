@@ -1,0 +1,136 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(28, 10, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: modal-backdrop-in 0.12s ease-out;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-dialog {
+  background: #ffffff;
+  color: #2a1408;
+  border: 1px solid #e7d5b3;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(28, 10, 0, 0.25);
+  width: 100%;
+  max-width: 440px;
+  padding: 24px 24px 20px 24px;
+  animation: modal-dialog-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+  outline: none;
+}
+
+@keyframes modal-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-title {
+  font-family: 'Lora', 'Playfair Display', Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2a1408;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.2px;
+}
+
+.modal-message {
+  color: #4a2e18;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.modal-message-paragraph {
+  margin: 0 0 10px 0;
+}
+
+.modal-message-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s;
+  min-width: 82px;
+}
+
+.modal-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.25);
+}
+
+.modal-btn-secondary {
+  background: transparent;
+  color: #4a2e18;
+  border-color: #e7d5b3;
+}
+
+.modal-btn-secondary:hover {
+  background: #faf2e5;
+  border-color: #c9a77a;
+}
+
+.modal-btn-primary {
+  background: #92400e;
+  color: #ffffff;
+  border-color: #92400e;
+}
+
+.modal-btn-primary:hover {
+  background: #7a3509;
+  border-color: #7a3509;
+}
+
+.modal-btn-danger {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+.modal-btn-danger:hover {
+  background: #9a1616;
+  border-color: #9a1616;
+}
+
+.modal-btn-danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.3);
+}

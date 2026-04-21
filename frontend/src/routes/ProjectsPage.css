@@ -1,0 +1,322 @@
+.page {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: #faf7f2;
+}
+
+.page-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 48px 80px 48px;
+}
+
+.projects-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.projects-title {
+  font-family: 'Lora', 'Playfair Display', Georgia, serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: #2a1408;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.projects-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.projects-toolbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4a2e18;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.projects-toolbar-icon-btn:hover {
+  background: #f5ead4;
+}
+
+.projects-toolbar-icon-btn[data-active='true'] {
+  background: #f5ead4;
+  border-color: #c9a77a;
+}
+
+.projects-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  width: 240px;
+}
+
+.projects-search:focus-within {
+  border-color: #92400e;
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.15);
+}
+
+.projects-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 13px;
+  color: #2a1408;
+  background: transparent;
+}
+
+.projects-search input::placeholder {
+  color: rgba(74, 46, 24, 0.5);
+}
+
+.projects-sort {
+  position: relative;
+}
+
+.projects-sort-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(28, 10, 0, 0.15);
+  padding: 4px;
+  z-index: 10;
+  min-width: 180px;
+}
+
+.projects-sort-option {
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: #2a1408;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.projects-sort-option:hover {
+  background: #faf2e5;
+}
+
+.projects-sort-option[data-selected='true'] {
+  background: #faf2e5;
+  font-weight: 500;
+}
+
+.projects-new-btn {
+  height: 36px;
+  padding: 0 14px;
+  background: #92400e;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.12s;
+}
+
+.projects-new-btn:hover {
+  background: #7a3509;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.project-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #e7d5b3;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.project-card:hover {
+  border-color: #c9a77a;
+  box-shadow: 0 4px 16px rgba(28, 10, 0, 0.08);
+}
+
+.project-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.project-card-name {
+  font-family: 'Lora', 'Playfair Display', Georgia, serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #2a1408;
+  line-height: 1.3;
+  letter-spacing: -0.15px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.project-card-menu-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: rgba(74, 46, 24, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s, background-color 0.12s;
+  flex-shrink: 0;
+}
+
+.project-card:hover .project-card-menu-btn,
+.project-card-menu-btn[data-open='true'] {
+  opacity: 1;
+}
+
+.project-card-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #2a1408;
+}
+
+.project-card-menu {
+  position: absolute;
+  top: 44px;
+  right: 16px;
+  background: #ffffff;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(28, 10, 0, 0.15);
+  padding: 4px;
+  z-index: 10;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-card-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: #2a1408;
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.project-card-menu-item:hover {
+  background: #faf2e5;
+}
+
+.project-card-menu-item.danger {
+  color: #b91c1c;
+}
+
+.project-card-menu-item.danger:hover {
+  background: #fdecec;
+}
+
+.project-card-description {
+  color: rgba(74, 46, 24, 0.75);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-card-empty-description {
+  color: rgba(74, 46, 24, 0.35);
+  font-size: 13px;
+  font-style: italic;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.project-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(74, 46, 24, 0.6);
+}
+
+.projects-empty {
+  text-align: center;
+  padding: 80px 24px;
+  color: rgba(74, 46, 24, 0.6);
+}
+
+.projects-empty-title {
+  font-family: 'Lora', 'Playfair Display', Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2a1408;
+  margin: 0 0 8px 0;
+}
+
+.projects-empty-body {
+  font-size: 14px;
+  margin: 0 0 20px 0;
+}
+
+.projects-empty .projects-new-btn {
+  height: 40px;
+  padding: 0 18px;
+}

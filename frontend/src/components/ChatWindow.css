@@ -7,6 +7,62 @@
   background: #faf7f2;
 }
 
+.chat-breadcrumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e7d5b3;
+  background: #ffffff;
+  font-size: 13px;
+  color: rgba(74, 46, 24, 0.75);
+  min-height: 40px;
+}
+
+.chat-breadcrumb-inner {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-breadcrumb-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4a2e18;
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background-color 0.1s;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-breadcrumb-project:hover {
+  background: #f5ead4;
+}
+
+.chat-breadcrumb-separator {
+  color: rgba(74, 46, 24, 0.35);
+  font-size: 12px;
+}
+
+.chat-breadcrumb-thread {
+  color: rgba(74, 46, 24, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -164,10 +220,53 @@
   }
 }
 
+/* Landing (empty-thread) layout: input + greeting are centered vertically
+ * until the first message goes out, at which point the normal bottom-pinned
+ * layout takes over. Matches the "search bar in the middle, then drops to
+ * the bottom after the first response" feel from ChatGPT/Claude. */
+.chat-empty-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  padding: 24px 20px 48px 20px;
+  gap: 20px;
+  min-height: 0;
+}
+
+.chat-empty-inner {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chat-empty-greeting {
+  font-family: 'Lora', 'Playfair Display', Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+  color: #1c0a00;
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
 .chat-input-bar {
   border-top: 1px solid #e7d5b3;
   background: #ffffff;
   padding: 14px 20px;
+}
+
+/* When the landing layout is active the input bar is no longer pinned at
+ * the bottom — drop the top border and panel background so it reads as a
+ * standalone field sitting under the greeting. */
+.chat-window-empty .chat-input-bar {
+  border-top: none;
+  background: transparent;
+  padding: 0;
 }
 
 .chat-input-bar-inner {
