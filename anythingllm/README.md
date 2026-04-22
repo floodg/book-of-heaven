@@ -9,8 +9,10 @@ anythingllm/
 ├── README.md                              ← this file
 ├── apply-workspace.mjs                    ← Node 18+ script: applies a config to an instance
 └── workspaces/
-    ├── book-of-heaven.config.json         ← non-prompt workspace settings
-    └── book-of-heaven.prompt.md           ← system prompt (markdown is just for readability; AnythingLLM stores it as plain text)
+    ├── book-of-heaven-narrated.config.json ← non-prompt settings for the "narrated" workspace (audio transcripts)
+    ├── book-of-heaven-narrated.prompt.md   ← system prompt for the "narrated" workspace
+    ├── book-of-heaven-text.config.json     ← non-prompt settings for the "text" workspace (diary PDFs)
+    └── book-of-heaven-text.prompt.md       ← system prompt for the "text" workspace (markdown is just for readability; AnythingLLM stores it as plain text)
 ```
 
 ## What's captured
@@ -34,20 +36,20 @@ Requires Node 18+ (uses global `fetch`).
 ANYTHINGLLM_URL=http://localhost:3001 \
 ANYTHINGLLM_KEY=your-local-key \
 node anythingllm/apply-workspace.mjs \
-  --config anythingllm/workspaces/book-of-heaven.config.json
+  --config anythingllm/workspaces/book-of-heaven-narrated.config.json
 
 # Production VPS
 ANYTHINGLLM_URL=https://your-vps-host:3001 \
 ANYTHINGLLM_KEY=your-production-key \
 node anythingllm/apply-workspace.mjs \
-  --config anythingllm/workspaces/book-of-heaven.config.json
+  --config anythingllm/workspaces/book-of-heaven-narrated.config.json
 ```
 
 Flags override env vars if you prefer explicit:
 
 ```bash
 node anythingllm/apply-workspace.mjs \
-  --config anythingllm/workspaces/book-of-heaven.config.json \
+  --config anythingllm/workspaces/book-of-heaven-narrated.config.json \
   --url http://localhost:3001 \
   --key your-key
 ```
@@ -62,15 +64,15 @@ The script will:
 
 ## Editing the prompt
 
-Always edit `book-of-heaven.prompt.md` in this repo — **not** in the AnythingLLM UI — and run the apply script. That way the repo stays authoritative and prod + local can't drift.
+Always edit `book-of-heaven-narrated.prompt.md` in this repo — **not** in the AnythingLLM UI — and run the apply script. That way the repo stays authoritative and prod + local can't drift.
 
 If you ever edit the prompt in the UI by accident, pull it back into the repo before making any local changes:
 
 ```bash
 curl -s -H "Authorization: Bearer $ANYTHINGLLM_KEY" \
-  "$ANYTHINGLLM_URL/api/v1/workspace/book-of-heaven" \
+  "$ANYTHINGLLM_URL/api/v1/workspace/book-of-heaven-narrated" \
   | jq -r '.workspace.openAiPrompt' \
-  > anythingllm/workspaces/book-of-heaven.prompt.md
+  > anythingllm/workspaces/book-of-heaven-narrated.prompt.md
 ```
 
 ## Deployment workflow

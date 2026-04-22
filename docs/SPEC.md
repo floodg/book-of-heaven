@@ -16,7 +16,7 @@ A public multi-user web platform for searching and exploring all 612 transcripts
 | Database | Supabase PostgreSQL | Local on port 54331 |
 | API Proxy | Supabase Edge Function (Deno) | `/supabase/functions/chat-proxy` |
 | Document AI | AnythingLLM desktop app | Running on port 3001 |
-| LLM | Anthropic Claude Haiku via AnythingLLM | Configured in AnythingLLM |
+| LLM | Anthropic Claude Sonnet 4.6 via AnythingLLM | Configured in AnythingLLM |
 
 ---
 
@@ -42,7 +42,7 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
 ```
 ANYTHINGLLM_URL=http://host.docker.internal:3001
 ANYTHINGLLM_KEY=<your-key>
-ANYTHINGLLM_WORKSPACE=book-of-heaven
+ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
 SUPABASE_URL=http://host.docker.internal:54331
 SERVICE_ROLE_KEY=sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz
 ```

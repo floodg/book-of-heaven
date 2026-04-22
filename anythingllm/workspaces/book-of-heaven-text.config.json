@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/workspace.schema.json",
+  "name": "Book of Heaven Text",
+  "slug": "book-of-heaven-text",
+  "promptFile": "book-of-heaven-text.prompt.md",
+  "settings": {
+    "openAiTemp": 0.7,
+    "openAiHistory": 10,
+    "similarityThreshold": 0.5,
+    "chatProvider": "anthropic",
+    "chatModel": "claude-sonnet-4-6",
+    "topN": 8,
+    "chatMode": "query",
+    "queryRefusalResponse": "There is no relevant information in this workspace to answer your query.",
+    "vectorSearchMode": "rerank"
+  }
+}

@@ -26,7 +26,7 @@ Supabase Edge Function        ← secure proxy, never exposes API keys
       ↕  API key (secret)
 AnythingLLM (VPS)             ← 612 embedded transcripts, shared
       ↕  pay-per-use
-Anthropic Claude API          ← claude-haiku-4-5
+Anthropic Claude API          ← claude-sonnet-4-6
 ```
 
 ---
@@ -40,7 +40,7 @@ Anthropic Claude API          ← claude-haiku-4-5
 | Database | Supabase PostgreSQL with Row Level Security |
 | API Proxy | Supabase Edge Functions (Deno) |
 | Document AI | AnythingLLM (self-hosted) |
-| LLM | Claude Haiku via Anthropic API |
+| LLM | Claude Sonnet 4.6 via Anthropic API |
 | Frontend hosting | Vercel (free tier) |
 | VPS | Hetzner Cloud CX22 (~$6/month) |
 
@@ -217,7 +217,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```bash
 supabase secrets set ANYTHINGLLM_URL=https://your-vps-ip:3001
 supabase secrets set ANYTHINGLLM_KEY=your-anythingllm-api-key
-supabase secrets set ANYTHINGLLM_WORKSPACE=book-of-heaven
+supabase secrets set ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
 ```
 
 ---
@@ -231,16 +231,16 @@ The workspace system prompt and chat/retrieval settings are versioned in `anythi
 ANYTHINGLLM_URL=http://localhost:3001 \
 ANYTHINGLLM_KEY=your-local-key \
 node anythingllm/apply-workspace.mjs \
-  --config anythingllm/workspaces/book-of-heaven.config.json
+  --config anythingllm/workspaces/book-of-heaven-narrated.config.json
 
 # Same command, pointed at the VPS, keeps production in lockstep
 ANYTHINGLLM_URL=https://your-vps-host:3001 \
 ANYTHINGLLM_KEY=your-production-key \
 node anythingllm/apply-workspace.mjs \
-  --config anythingllm/workspaces/book-of-heaven.config.json
+  --config anythingllm/workspaces/book-of-heaven-narrated.config.json
 ```
 
-Edit the prompt in [`anythingllm/workspaces/book-of-heaven.prompt.md`](anythingllm/workspaces/book-of-heaven.prompt.md) — never directly in the AnythingLLM UI — then re-run the apply command to push the change.
+Edit the prompt in [`anythingllm/workspaces/book-of-heaven-narrated.prompt.md`](anythingllm/workspaces/book-of-heaven-narrated.prompt.md) — never directly in the AnythingLLM UI — then re-run the apply command to push the change.
 
 ---
 
@@ -251,9 +251,9 @@ Edit the prompt in [`anythingllm/workspaces/book-of-heaven.prompt.md`](anythingl
 | Hetzner CX22 VPS | ~$6/month | AnythingLLM host |
 | Supabase | Free tier | Up to 50,000 MAU |
 | Vercel | Free tier | Frontend hosting |
-| Anthropic API | ~$0.001/query | Claude Haiku |
+| Anthropic API | ~$0.01–0.03/query | Claude Sonnet 4.6 ($3/$15 per M tokens) |
 | Domain (optional) | ~$15/year | e.g. bookofheavensearch.com |
-| **Total** | **~$7–10/month** | |
+| **Total** | **~$7/month + usage** | Anthropic per-query cost dominates once traffic picks up |
 
 ---
 

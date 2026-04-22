@@ -122,17 +122,38 @@ function CitationPill({
   links: CitationLinks
 }) {
   const ts = formatTimestamp(parsed.timestampSec)
-  const labelParts = [`Vol ${parsed.volume}`, `No ${parsed.number}`]
+
+  // Two kinds of citations, treated as two visually distinct sources:
+  //   - "narrated"  — VTT transcript of Francis reading a Number aloud.
+  //                   Carries a Number + (usually) a timestamp, links to
+  //                   both the PDF page and the YouTube video.
+  //   - "book"      — raw text from the Book of Heaven PDF itself, emitted
+  //                   by the assistant when its retrieval hit the PDF
+  //                   rather than a VTT. Carries only a volume (+ often a
+  //                   date) and links to the PDF viewer.
+  // The source type is encoded as a CSS modifier class so we can tint the
+  // pill, and also rendered as a small leading text label so the type is
+  // legible without relying on color alone (accessibility + colorblind
+  // users).
+  const sourceType: 'narrated' | 'book' = parsed.number != null ? 'narrated' : 'book'
+  const sourceLabel = sourceType === 'narrated' ? 'Narrated' : 'Book'
+
+  const labelParts: string[] = [`Vol ${parsed.volume}`]
+  if (parsed.number != null) labelParts.push(`No ${parsed.number}`)
   if (ts) labelParts.push(ts)
+  if (parsed.number == null && parsed.dateText) labelParts.push(parsed.dateText)
   const label = labelParts.join(' · ')
 
   const pdfTitle =
     links.pdfPage != null
       ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
       : `Open Volume ${parsed.volume} PDF`
-  const ytTitle = ts
-    ? `Open YouTube video for Number ${parsed.number} at ${ts}`
-    : `Open YouTube video for Number ${parsed.number}`
+  const ytTitle =
+    parsed.number != null
+      ? ts
+        ? `Open YouTube video for Number ${parsed.number} at ${ts}`
+        : `Open YouTube video for Number ${parsed.number}`
+      : ''
 
   // The excerpt tooltip goes on the outer span so hovering anywhere on the
   // pill surfaces the retrieved passage. Falls back to the original citation
@@ -141,7 +162,11 @@ function CitationPill({
   const hoverTitle = links.excerpt ?? parsed.raw
 
   return (
-    <span className="citation-badge" title={hoverTitle}>
+    <span
+      className={`citation-badge citation-badge--${sourceType}`}
+      title={hoverTitle}
+    >
+      <span className="citation-source">{sourceLabel}</span>
       <span className="citation-label">{label}</span>
       {links.pdfHref && (
         <a

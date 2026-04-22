@@ -11,7 +11,7 @@ Available via `Deno.env.get()`:
 ```
 ANYTHINGLLM_URL        e.g. http://host.docker.internal:3001
 ANYTHINGLLM_KEY        AnythingLLM API key
-ANYTHINGLLM_WORKSPACE  workspace slug e.g. book-of-heaven
+ANYTHINGLLM_WORKSPACE  workspace slug e.g. book-of-heaven-narrated
 SUPABASE_URL           Supabase Kong URL, e.g. http://host.docker.internal:54331
 SERVICE_ROLE_KEY       sb_secret_... key from `supabase status`
 ```

@@ -90,6 +90,24 @@ export function resolveCitationLinks(
   youtubeMap: Record<string, string>,
   pdfPages: PdfPagesIndex = {},
 ): CitationLinks {
+  // Raw-PDF citations (e.g. `[VOLUME25.pdf - January 13, 1929]`) carry
+  // only a volume + optional trailing text. We skip the per-Number index
+  // and YouTube map entirely, and use the trailing text (if any) as the
+  // pdf.js search query. No page is set — pdf.js's find controller will
+  // scroll to the first match once the text layer renders.
+  if (cite.number == null) {
+    const pdfParams = new URLSearchParams()
+    if (cite.dateText) pdfParams.set('q', cite.dateText)
+    const query = pdfParams.toString()
+    const pdfHref = query ? `/pdf/${cite.volume}?${query}` : `/pdf/${cite.volume}`
+    return {
+      pdfHref,
+      ytHref: null,
+      excerpt: cite.dateText ?? null,
+      pdfPage: null,
+    }
+  }
+
   const value = pdfPages[String(cite.volume)]?.[String(cite.number)]
   // `pickEntry` handles the array-of-segments case (picking the segment
   // whose VTT timestamp is the greatest ≤ the citation's timestamp) and

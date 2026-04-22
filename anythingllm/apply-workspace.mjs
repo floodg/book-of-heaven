@@ -2,7 +2,7 @@
 // Applies a workspace config + system prompt to an AnythingLLM instance.
 //
 // Usage:
-//   node anythingllm/apply-workspace.mjs --config anythingllm/workspaces/book-of-heaven.config.json
+//   node anythingllm/apply-workspace.mjs --config anythingllm/workspaces/book-of-heaven-narrated.config.json
 //   node anythingllm/apply-workspace.mjs --config ... --url http://localhost:3001 --key XXX
 //
 // If --url/--key are omitted they are read from env vars:

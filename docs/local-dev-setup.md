@@ -54,7 +54,7 @@ If you installed AnythingLLM via the desktop app instead of Docker, just open it
 
 1. Open AnythingLLM at `http://localhost:3001`
 2. Go to your **Book of Heaven** workspace settings
-3. The slug is the URL-safe name, e.g. `book-of-heaven`
+3. The slug is the URL-safe name, e.g. `book-of-heaven-narrated`
 
 ---
 
@@ -254,7 +254,7 @@ Create `supabase/functions/.env` (this file should be in `.gitignore`):
 ```env
 ANYTHINGLLM_URL=http://host.docker.internal:3001
 ANYTHINGLLM_KEY=your-anythingllm-api-key-here
-ANYTHINGLLM_WORKSPACE=book-of-heaven
+ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
 SUPABASE_URL=http://host.docker.internal:54331
 SERVICE_ROLE_KEY=sb_secret_...                 # from `supabase status`
 ```

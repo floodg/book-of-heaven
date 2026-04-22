@@ -1,19 +1,59 @@
+/*
+ * Citation pill. Two source-type variants:
+ *   - .citation-badge--narrated  (default, amber)  — Francis's spoken
+ *     narration of a Number. Carries Number + timestamp, links to PDF +
+ *     YouTube.
+ *   - .citation-badge--book  (slate)              — raw text from the
+ *     Book of Heaven PDF. Links to the PDF viewer only.
+ *
+ * The color is a redundancy on top of the visible `Narrated` / `Book`
+ * prefix chip inside the pill, so the source type is legible even in
+ * grayscale / for colorblind users.
+ */
+
 .citation-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #92400e;
   font-size: 11px;
   font-weight: 500;
   line-height: 1.3;
-  padding: 1px 6px 1px 8px;
+  padding: 1px 6px 1px 4px;
   border-radius: 9999px;
   white-space: nowrap;
   vertical-align: baseline;
   margin: 0 2px;
   max-width: 100%;
+}
+
+/* Narrated — the default amber palette matches the original pill style. */
+.citation-badge,
+.citation-badge--narrated {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+/* Book — slate/indigo to signal "text straight from the PDF" vs. spoken. */
+.citation-badge--book {
+  background: #e0e7ff;
+  border: 1px solid #6366f1;
+  color: #3730a3;
+}
+
+.citation-source {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.citation-badge--book .citation-source {
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .citation-label {
@@ -29,15 +69,22 @@
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  color: #92400e;
+  color: inherit;
   background: transparent;
   text-decoration: none;
   transition: background-color 0.1s, color 0.1s;
 }
 
-.citation-action:hover,
-.citation-action:focus-visible {
+.citation-badge--narrated .citation-action:hover,
+.citation-badge--narrated .citation-action:focus-visible {
   background: #f59e0b;
+  color: #fff;
+  outline: none;
+}
+
+.citation-badge--book .citation-action:hover,
+.citation-badge--book .citation-action:focus-visible {
+  background: #6366f1;
   color: #fff;
   outline: none;
 }
