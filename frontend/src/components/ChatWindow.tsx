@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import ReactMarkdown from 'react-markdown'
@@ -7,6 +7,9 @@ import { supabase } from '../lib/supabase'
 import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
 import { IconFolder } from './Icons'
+import type { AnythingLlmSource } from '../lib/sources'
+import { useYoutubeMap } from '../lib/YoutubeMapContext'
+import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import './ChatWindow.css'
 
 interface Message {
@@ -14,6 +17,10 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   created_at: string
+  // Retrieval sources AnythingLLM returned for this (assistant) turn.
+  // Null / undefined for user messages and for assistant messages written
+  // before migration 006 added the column.
+  sources?: AnythingLlmSource[] | null
 }
 
 // Module-level cache of "messages I just rendered locally for thread X".
@@ -41,19 +48,57 @@ const FRESH_THREAD_CACHE_TTL_MS = 10_000
 // highlightCitations recursively descends into nested children, so we only
 // need to apply it at block level. Applying it at both block and inline
 // levels (e.g. strong, em) causes double-wrapping and nested pills.
-const markdownComponents: Components = {
-  p: ({ children }) => <p>{highlightCitations(children)}</p>,
-  li: ({ children }) => <li>{highlightCitations(children)}</li>,
-  h1: ({ children }) => <h1>{highlightCitations(children)}</h1>,
-  h2: ({ children }) => <h2>{highlightCitations(children)}</h2>,
-  h3: ({ children }) => <h3>{highlightCitations(children)}</h3>,
-  h4: ({ children }) => <h4>{highlightCitations(children)}</h4>,
-  blockquote: ({ children }) => <blockquote>{highlightCitations(children)}</blockquote>,
-  a: ({ children, href }) => (
-    <a href={href} target="_blank" rel="noreferrer noopener">
-      {children}
-    </a>
-  ),
+//
+// The factory here closes over the active message's retrieval sources and
+// the session's YouTube map, so each citation pill can resolve its own PDF
+// page + video timestamp links without threading those arguments through
+// react-markdown. A fresh `Components` object per message keeps the
+// highlighter pure (input → output) instead of pulling from module state.
+function makeMarkdownComponents(ctx: {
+  sources: AnythingLlmSource[] | null
+  youtubeMap: Record<string, string>
+  pdfPages: PdfPagesIndex
+}): Components {
+  const h = (node: ReactNode) => highlightCitations(node, 'n', ctx)
+  return {
+    p: ({ children }) => <p>{h(children)}</p>,
+    li: ({ children }) => <li>{h(children)}</li>,
+    h1: ({ children }) => <h1>{h(children)}</h1>,
+    h2: ({ children }) => <h2>{h(children)}</h2>,
+    h3: ({ children }) => <h3>{h(children)}</h3>,
+    h4: ({ children }) => <h4>{h(children)}</h4>,
+    blockquote: ({ children }) => <blockquote>{h(children)}</blockquote>,
+    a: ({ children, href }) => (
+      <a href={href} target="_blank" rel="noreferrer noopener">
+        {children}
+      </a>
+    ),
+  }
+}
+
+// Small helper so the per-message Components factory is memoized on the three
+// inputs that actually affect the output — avoids rebuilding it (and every
+// react-markdown node) on unrelated parent re-renders.
+function AssistantMarkdown({
+  content,
+  sources,
+  youtubeMap,
+  pdfPages,
+}: {
+  content: string
+  sources: AnythingLlmSource[] | null
+  youtubeMap: Record<string, string>
+  pdfPages: PdfPagesIndex
+}) {
+  const components = useMemo(
+    () => makeMarkdownComponents({ sources, youtubeMap, pdfPages }),
+    [sources, youtubeMap, pdfPages],
+  )
+  return (
+    <div className="chat-bubble-markdown">
+      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+    </div>
+  )
 }
 
 interface ChatWindowProps {
@@ -92,6 +137,8 @@ export function ChatWindow({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const youtubeMap = useYoutubeMap()
+  const pdfPages = usePdfPages()
   // When this component itself creates a new thread (fresh chat + first message),
   // the parent will echo that thread_id back as a prop change. We skip the one
   // refetch that would otherwise replace our just-added local messages with
@@ -248,7 +295,10 @@ export function ChatWindow({
         return
       }
 
-      const payload = (await res.json()) as { reply?: unknown }
+      const payload = (await res.json()) as {
+        reply?: unknown
+        sources?: unknown
+      }
       const rawReply = payload?.reply
       let replyText: string
       if (typeof rawReply === 'string') {
@@ -260,11 +310,17 @@ export function ChatWindow({
         replyText = `(Unexpected response shape)\n\n${JSON.stringify(rawReply, null, 2)}`
       }
 
+      const replySources: AnythingLlmSource[] | null =
+        Array.isArray(payload?.sources) && payload.sources.length > 0
+          ? (payload.sources as AnythingLlmSource[])
+          : null
+
       const assistantMessage: Message = {
         id: `local-${Date.now()}-a`,
         role: 'assistant',
         content: replyText,
         created_at: new Date().toISOString(),
+        sources: replySources,
       }
       setMessages((prev) => {
         const next = [...prev, assistantMessage]
@@ -410,11 +466,12 @@ export function ChatWindow({
                 }
               >
                 {message.role === 'assistant' ? (
-                  <div className="chat-bubble-markdown">
-                    <ReactMarkdown components={markdownComponents}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
+                  <AssistantMarkdown
+                    content={message.content}
+                    sources={message.sources ?? null}
+                    youtubeMap={youtubeMap}
+                    pdfPages={pdfPages}
+                  />
                 ) : (
                   message.content
                 )}

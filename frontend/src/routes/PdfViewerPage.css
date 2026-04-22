@@ -1,0 +1,256 @@
+/* Full-viewport PDF viewer — sits outside ProtectedLayout so the chat
+   sidebar doesn't compete with the pages. Theme mirrors the rest of the
+   app (warm cream background, burnt-umber accents). */
+
+.pdf-viewer-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #faf7f2;
+  color: #1f1a14;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+.pdf-viewer-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #ead9b9;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  font-size: 13px;
+}
+
+.pdf-viewer-toolbar-left,
+.pdf-viewer-toolbar-center,
+.pdf-viewer-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-viewer-toolbar-left {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pdf-viewer-toolbar-center {
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.pdf-viewer-toolbar-right {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.pdf-viewer-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3a2f1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdf-viewer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #6b5a3f;
+  text-decoration: none;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+.pdf-viewer-close:hover {
+  background: #f3e6c9;
+  color: #3a2f1f;
+}
+
+.pdf-viewer-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e7d5b3;
+  background: #fdfaf2;
+  color: #3a2f1f;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+.pdf-viewer-icon-btn:hover:not(:disabled) {
+  background: #f3e6c9;
+  border-color: #d9c392;
+}
+.pdf-viewer-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pdf-viewer-page-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdf-viewer-page-input input {
+  width: 48px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #e7d5b3;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+}
+.pdf-viewer-page-input input:focus {
+  outline: 2px solid #b45309;
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.pdf-viewer-page-total {
+  color: #6b5a3f;
+  font-size: 12px;
+}
+
+.pdf-viewer-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 28px;
+  border: 1px solid #e7d5b3;
+  border-radius: 6px;
+  background: #fff;
+  color: #6b5a3f;
+  min-width: 0;
+}
+.pdf-viewer-search:focus-within {
+  border-color: #b45309;
+}
+.pdf-viewer-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 200px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: #1f1a14;
+}
+.pdf-viewer-search input:focus {
+  outline: none;
+}
+
+.pdf-viewer-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pdf-viewer-fit {
+  min-width: 44px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The scroll-wrap is the flex child that takes the remaining vertical
+   space under the toolbar. Its only job is to provide a positioned box
+   for the absolutely-positioned .pdf-viewer-container below — pdfjs-dist
+   4.x throws if the container it's given isn't `position: absolute` at
+   computed-style time. */
+.pdf-viewer-scroll-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #e7dcc4;
+}
+
+.pdf-viewer-container {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.pdf-viewer-container .pdfViewer {
+  /* Match the inner width to the scroll parent so page-width scaling lines
+     up with what the user sees. */
+  width: 100%;
+  padding: 16px 0 32px;
+}
+
+/* pdf.js emits `<span class="highlight">` inside the text layer for search
+   hits. Re-skin them so they pop against the cream background. The
+   ".selected" variant is the currently-focused match, which gets a stronger
+   tint. */
+.pdf-viewer-container .textLayer .highlight {
+  background-color: rgba(252, 211, 77, 0.55);
+  border-radius: 2px;
+}
+.pdf-viewer-container .textLayer .highlight.selected {
+  background-color: rgba(251, 146, 60, 0.75);
+}
+
+.pdf-viewer-error {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  color: #6b5a3f;
+  gap: 8px;
+}
+.pdf-viewer-error code {
+  background: #f3e6c9;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.pdf-viewer-error-detail {
+  font-size: 12px;
+  color: #8a765a;
+  max-width: 560px;
+}
+
+/* Responsive tidy-up on narrow windows: hide the zoom label, shrink the
+   search field, stack the toolbar. */
+@media (max-width: 640px) {
+  .pdf-viewer-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pdf-viewer-search input {
+    width: 120px;
+  }
+  .pdf-viewer-title {
+    font-size: 13px;
+  }
+}

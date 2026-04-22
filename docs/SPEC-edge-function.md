@@ -4,7 +4,7 @@
 `supabase/functions/chat-proxy/index.ts`
 
 ## Purpose
-Secure proxy between the React frontend and AnythingLLM. Validates the user's Supabase JWT, forwards the message to AnythingLLM, persists both the user and assistant messages to the database with the caller-supplied `thread_id`, generates a short human-readable title for the thread on its first exchange, optionally stamps a new thread with the project it was created from, prepends per-project instructions to the LLM call, and returns the aggregated AI response.
+Secure proxy between the React frontend and AnythingLLM. Validates the user's Supabase JWT, forwards the message to AnythingLLM, persists both the user and assistant messages to the database with the caller-supplied `thread_id`, generates a short human-readable title for the thread on its first exchange, optionally stamps a new thread with the project it was created from, prepends per-project instructions to the LLM call, captures the retrieval source chunks AnythingLLM surfaces so the frontend can link each citation to its PDF page / YouTube timestamp, and returns the aggregated AI response.
 
 ## Environment Variables
 Available via `Deno.env.get()`:
@@ -46,11 +46,21 @@ Content-Type: application/json
 {
   "reply": "Based on the Book of Heaven writings...[Book of Heaven Volume 17 - Number 13]...",
   "thread_id": "7a2f8d5c-7e43-4e1f-9a0a-4b5f8d2a3c10",
-  "title": "Divine Will and the soul"
+  "title": "Divine Will and the soul",
+  "sources": [
+    {
+      "title": "Volume_17.pdf",
+      "chunkSource": "file:///.../Volume_17.pdf",
+      "text": "<document_metadata> pageNumber: 412 </document_metadata>\n\nAnd Jesus said...",
+      "score": 0.82
+    }
+  ]
 }
 ```
 
 `thread_id` is echoed back verbatim so the client can confirm the server persisted the message against the expected thread. `title` is the newly-generated thread title if this request triggered title generation (i.e. this was the first exchange in the thread, or the thread existed but had no `chat_threads` row yet); it is `null` when the thread already had a title or when title generation failed gracefully. The frontend does not depend on reading it from the response — the sidebar re-queries `chat_threads` on refresh — but surfacing it keeps the API observable.
+
+`sources` is the retrieval chunks AnythingLLM surfaced for this turn (may be an empty array or `null`). The exact shape is pass-through from AnythingLLM's SSE stream; the frontend treats every field as optional. See `docs/SPEC-source-linking.md` for how the UI turns this payload into PDF-page + YouTube-timestamp links on each citation pill. The same payload is persisted to `chat_messages.sources` (jsonb) so the links still resolve after a page reload. The title-generation call deliberately does **not** forward its sources — only the main response's sources are captured and returned.
 
 **Error responses** — all JSON with a single `error` field so the frontend can surface a meaningful message:
 - `400` — missing/empty `message`, missing/invalid `thread_id` (not a UUID), or malformed JSON body
@@ -118,21 +128,23 @@ Content-Type: application/json
       User request: <titleSeed>
       ```
       Run title generation in parallel with the main response so it does not extend user-perceived latency; the title stream is short (a few tokens) and typically finishes well before the main reply.
-12. Read each SSE stream, parse `data: { ... }` frames, accumulate `chunk.textResponse` into `fullText` and capture any `chunk.error` string. (Shared helper `anythingLlmChat` does this for both calls.)
+12. Read each SSE stream, parse `data: { ... }` frames, accumulate `chunk.textResponse` into `fullText`, capture any `chunk.error` string, and capture the last non-empty `chunk.sources` array seen on the stream. (Shared helper `anythingLlmChat` does this for both calls; only the main-response sources are used, the title call's sources are dropped.)
 13. Decide the final reply:
     - `fullText.trim()` non-empty → use `fullText`
     - Otherwise if `llmError` was set → return `"AnythingLLM error: <llmError>"` so the frontend shows a diagnostic rather than a blank reply
     - Otherwise → return an instructional fallback message explaining the workspace needs documents and an LLM configured
 14. Normalize the title output: strip any `[Book of Heaven ...]` / `[Volume ...]` citations the system prompt may have leaked in, strip `Title:` prefixes, take only the first non-empty line, strip wrapping quotes (straight + curly), strip trailing `.?!,;:`, collapse whitespace, and hard-cap at 60 characters (appending `…` if it had to be cut). If what's left is under 2 characters, treat the title as unusable and skip the update.
-15. Insert the assistant reply into `chat_messages` using the same `thread_id`:
+15. Insert the assistant reply into `chat_messages` using the same `thread_id`, attaching the retrieval sources we captured in step 12 (or `null` if the stream didn't surface any):
     ```json
     {
       "user_id": "<user.id>",
       "role": "assistant",
       "content": "<reply>",
-      "thread_id": "<thread_id>"
+      "thread_id": "<thread_id>",
+      "sources": "<mainResult.sources | null>"
     }
     ```
+    The column is `jsonb` (migration `006_chat_message_sources.sql`) and the frontend treats every field as optional.
 16. If a title was generated, update the existing `chat_threads` row (the row already exists because step 7 upserted it):
     ```sql
     update chat_threads
@@ -140,7 +152,7 @@ Content-Type: application/json
      where thread_id = :thread_id and user_id = :user_id and title is null
     ```
     The `title is null` guard prevents two concurrent requests racing on the same thread from clobbering each other's titles; whichever one wins the race sets the title and the other one becomes a no-op. Any update error is logged but not thrown — we'd rather return the user's reply than 500 over a cosmetic title.
-17. Return `{ reply, thread_id, title }` with JSON + CORS headers. `title` is `null` when no title was generated this request.
+17. Return `{ reply, thread_id, title, sources }` with JSON + CORS headers. `title` is `null` when no title was generated this request; `sources` is the (possibly `null`) retrieval payload from step 12.
 
 ## CORS Headers (on every response)
 ```

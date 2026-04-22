@@ -1,0 +1,14 @@
+{
+  "name": "book-of-heaven-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Offline helper scripts (PDF page index, YouTube map, etc.) used by the Book of Heaven frontend. Not shipped to the browser.",
+  "type": "module",
+  "scripts": {
+    "build-pdf-pages": "node scripts/build-pdf-page-index.mjs",
+    "build-youtube-map": "node scripts/build-youtube-map.mjs"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "^4.10.38"
+  }
+}

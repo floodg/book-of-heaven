@@ -7,6 +7,7 @@ import { ProtectedLayout } from './routes/ProtectedLayout'
 import { ChatPage } from './routes/ChatPage'
 import { ProjectsPage } from './routes/ProjectsPage'
 import { ProjectDetailPage } from './routes/ProjectDetailPage'
+import { PdfViewerPage } from './routes/PdfViewerPage'
 import './App.css'
 
 function App() {
@@ -68,6 +69,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Full-screen PDF viewer — kept outside ProtectedLayout so it can
+            take over the whole viewport without the chat sidebar. The page
+            still requires auth (App.tsx bails out above when session is
+            null), but it doesn't need WorkspaceContext / thread data. */}
+        <Route path="pdf/:volume" element={<PdfViewerPage />} />
+
         <Route
           element={<ProtectedLayout user={session.user} session={session} />}
         >

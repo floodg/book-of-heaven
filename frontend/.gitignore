@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Book of Heaven volume PDFs are served from public/pdfs/ at runtime but the
+# binaries are too large for git. Drop local copies in that folder; see
+# public/pdfs/README.md for production hosting notes.
+public/pdfs/*.pdf
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
