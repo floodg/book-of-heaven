@@ -217,8 +217,11 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```bash
 supabase secrets set ANYTHINGLLM_URL=https://your-vps-ip:3001
 supabase secrets set ANYTHINGLLM_KEY=your-anythingllm-api-key
-supabase secrets set ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
+supabase secrets set ANYTHINGLLM_WORKSPACE_TEXT=book-of-heaven-text
+supabase secrets set ANYTHINGLLM_WORKSPACE_NARRATED=book-of-heaven-narrated
 ```
+
+Both workspaces must exist on the AnythingLLM instance — the chat proxy fans out to one or both of them depending on the per-message source selector in the UI (Text / Narrated / Both). See [`anythingllm/README.md`](anythingllm/README.md) for how to apply the versioned workspace configs.
 
 ---
 

@@ -12,6 +12,8 @@ import { useWorkspace, type Project } from '../lib/WorkspaceContext'
 import { useModal } from '../components/Modal'
 import { ThreadRow } from '../components/ThreadRow'
 import { IconArrowLeft } from '../components/Icons'
+import { SourceToggle } from '../components/SourceToggle'
+import { usePreferredSource, type Source } from '../lib/source'
 import { generateThreadId } from '../lib/ids'
 import type { ChatPageRouteState } from './ChatPage'
 import './ProjectDetailPage.css'
@@ -81,12 +83,13 @@ function ProjectDetailBody({ project }: { project: Project }) {
   )
 
   const handleSubmitNewChat = useCallback(
-    (draft: string) => {
+    (draft: string, source: Source) => {
       const trimmed = draft.trim()
       if (!trimmed) return
       const threadId = generateThreadId()
       const state: ChatPageRouteState = {
         initialMessage: trimmed,
+        initialSource: source,
         projectId: project.id,
       }
       navigate(`/c/${threadId}`, { state })
@@ -331,7 +334,7 @@ function ProjectHeader({ project, modal, workspace }: ProjectHeaderProps) {
 interface ProjectChatInputProps {
   placeholder: string
   projectName: string
-  onSubmit: (draft: string) => void
+  onSubmit: (draft: string, source: Source) => void
 }
 
 function ProjectChatInput({
@@ -340,6 +343,7 @@ function ProjectChatInput({
   onSubmit,
 }: ProjectChatInputProps) {
   const [draft, setDraft] = useState('')
+  const [source, setSource] = usePreferredSource()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Auto-resize the textarea so multi-line drafts don't get clipped. Capped
@@ -353,7 +357,7 @@ function ProjectChatInput({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    onSubmit(draft)
+    onSubmit(draft, source)
     setDraft('')
   }
 
@@ -362,7 +366,7 @@ function ProjectChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (draft.trim()) {
-        onSubmit(draft)
+        onSubmit(draft, source)
         setDraft('')
       }
     }
@@ -381,13 +385,16 @@ function ProjectChatInput({
           placeholder={`Start a chat in ${projectName}…`}
           rows={1}
         />
-        <button
-          type="submit"
-          className="project-input-submit"
-          disabled={!draft.trim()}
-        >
-          Send
-        </button>
+        <div className="project-input-actions">
+          <SourceToggle value={source} onChange={setSource} />
+          <button
+            type="submit"
+            className="project-input-submit"
+            disabled={!draft.trim()}
+          >
+            Send
+          </button>
+        </div>
       </form>
     </div>
   )

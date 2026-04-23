@@ -42,7 +42,8 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
 ```
 ANYTHINGLLM_URL=http://host.docker.internal:3001
 ANYTHINGLLM_KEY=<your-key>
-ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
+ANYTHINGLLM_WORKSPACE_TEXT=book-of-heaven-text
+ANYTHINGLLM_WORKSPACE_NARRATED=book-of-heaven-narrated
 SUPABASE_URL=http://host.docker.internal:54331
 SERVICE_ROLE_KEY=sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz
 ```
@@ -100,7 +101,8 @@ book-of-heaven/
 │   │   ├── 003_chat_threads.sql         ← per-thread title metadata
 │   │   ├── 004_chat_organization.sql    ← chat_projects + project_id (+ historical Labels tables)
 │   │   ├── 005_projects_redesign.sql    ← drops Labels, adds description + instructions + pinned_at
-│   │   └── 006_chat_message_sources.sql ← adds jsonb sources column for citation source linking
+│   │   ├── 006_chat_message_sources.sql ← adds jsonb sources column for citation source linking
+│   │   └── 007_chat_message_source.sql  ← adds source + turn_id for per-message workspace selection
 │   └── functions/
 │       └── chat-proxy/
 │           └── index.ts
@@ -154,15 +156,16 @@ Threads can be pinned with `chat_threads.pinned_at` (non-null timestamp). Pinned
 ## Data Flow
 
 ```
-User types message
+User types message, picks source (Text / Narrated / Both)
       ↓
-ChatWindow.tsx — mints thread_id if new chat, POSTs { message, thread_id, project_id? }
-                 with user JWT. project_id is only sent when the message originated
-                 on a project detail page.
+ChatWindow.tsx — mints thread_id if new chat + a per-turn turn_id, POSTs
+                 { message, thread_id, turn_id, source, project_id? } with user JWT.
+                 project_id is only sent when the message originated on a project detail page.
       ↓
-chat-proxy/index.ts — validates JWT, validates thread_id (+ project_id if present) as UUIDs
+chat-proxy/index.ts — validates JWT, thread_id + turn_id as UUIDs, source as
+                      'text' | 'narrated' | 'both'
       ↓
-Edge Function — inserts user row (with thread_id) into chat_messages
+Edge Function — inserts user row with thread_id + turn_id + source into chat_messages
       ↓
 Edge Function — upserts chat_threads (ignoreDuplicates), stamping project_id on creation
       ↓
@@ -170,27 +173,57 @@ Edge Function — reads chat_threads.project_id back, fetches chat_projects.inst
                  if the thread is in a project. Prepends instructions to the message
                  as a system-style preamble.
       ↓
-Edge Function — forwards composed message to AnythingLLM /stream-chat, aggregates SSE
-                 (in parallel with a title-generation call when the thread has no title yet),
-                 capturing the `sources` retrieval payload on the finalize frame
+Edge Function — fans out to 1 workspace (text or narrated) or 2 workspaces (both) via
+                 Promise.all to AnythingLLM /stream-chat, aggregating each SSE stream,
+                 (in parallel with a title-generation call against the narrated workspace
+                 when the thread has no title yet); each call captures its own `sources`
+                 retrieval payload on the finalize frame
       ↓
-AnythingLLM — searches 612 embedded transcripts + PDFs, calls Claude, streams back
+AnythingLLM — for each workspace, searches embedded documents, calls Claude, streams back
                  text chunks and source chunks
       ↓
-Edge Function — inserts assistant row (same thread_id) into chat_messages, persisting
-                 the retrieval sources into chat_messages.sources (jsonb)
+Edge Function — inserts 1 or 2 assistant rows (one per workspace) into chat_messages with
+                 the shared turn_id and source ∈ { 'text', 'narrated' }, persisting per-reply
+                 retrieval sources into chat_messages.sources (jsonb)
       ↓
 Edge Function — updates chat_threads.title if one was generated this turn
       ↓
-Edge Function — returns { reply, thread_id, title?, sources? } (non-streaming public contract)
+Edge Function — returns
+                 { thread_id, turn_id, title?, replies: [{source, reply, sources}] }
+                 (non-streaming public contract)
       ↓
-ChatWindow.tsx — renders reply as markdown; per-message CitationBadge uses the message's
-                 sources + the session-scoped YouTube map to turn each citation into a
-                 clickable PDF page link + YouTube timestamp link (see SPEC-source-linking.md)
+ChatWindow.tsx — groups messages by turn_id; a turn with two assistant replies renders
+                 them in a side-by-side two-column layout (stacks on narrow viewports).
+                 Each reply is rendered as markdown with a workspace chip label, and
+                 its own CitationBadge resolution using the message's sources + the
+                 session-scoped YouTube map (see SPEC-source-linking.md)
       ↓
 ChatPage.tsx — calls WorkspaceContext.refresh(); Sidebar + pages re-render with the
                new thread and its freshly-generated title
 ```
+
+---
+
+## Per-Message Source Selection
+
+The app ships with **two** AnythingLLM workspaces configured on the same instance:
+
+| Workspace slug | Contents | Citation format |
+|---|---|---|
+| `book-of-heaven-text` | Diary PDFs (Volume_01 … Volume_36) | `[Volume 25.pdf - January 13, 1929]` |
+| `book-of-heaven-narrated` | Francis Hogan's audio transcripts (VTT) | `[Book of Heaven Volume 4 - Number 7 (01:23:45)]` |
+
+The input bar on `/`, `/c/:threadId`, and `/projects/:id` has a three-way segmented `SourceToggle`:
+
+- **Text** — searches the diary PDFs only (one AnythingLLM call).
+- **Narrated** — searches the audio transcripts only (one AnythingLLM call).
+- **Both** — searches both in parallel and the UI renders the two replies side-by-side.
+
+The selection is **per message**, not per thread. A user can switch freely within a thread and each turn is persisted with its own `chat_messages.source`. Assistant rows always carry a concrete workspace (`'text'` or `'narrated'`); user rows carry whichever option the user picked (`'text'`, `'narrated'`, or `'both'`). Rows of the same turn share `chat_messages.turn_id`, which is what `ChatWindow` uses to group a user question with its 1-2 assistant replies.
+
+The selection persists across page loads via `localStorage` under the key `boh.source`, so a user's habitual choice is remembered. New users start at `'both'` on their first message.
+
+Citation parsing in `frontend/src/lib/citations.ts` already accepts both formats, so a split turn's two replies render their badges correctly without additional logic.
 
 ---
 

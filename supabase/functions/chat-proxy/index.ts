@@ -12,6 +12,17 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 }
 
+// The two AnythingLLM workspaces this proxy fans out to. "Text" is the
+// diary PDFs; "Narrated" is Francis Hogan's audio transcripts. Users pick
+// per-message which one(s) to query via the `source` field on each request.
+type Source = 'text' | 'narrated' | 'both'
+type AssistantSource = 'text' | 'narrated'
+
+function workspaceSlugFor(source: AssistantSource): string {
+  if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
+  return Deno.env.get('ANYTHINGLLM_WORKSPACE_NARRATED')!
+}
+
 // A single retrieved chunk AnythingLLM surfaces alongside the generated reply.
 // AnythingLLM emits these on the finalize SSE frame (and sometimes also on
 // textResponseChunk frames). We pass them through untouched to the frontend
@@ -38,17 +49,33 @@ export interface AnythingLlmSource {
 //   occurrence is safe because earlier frames either omit it or carry the
 //   same list).
 // Throws only on HTTP or transport failure.
-async function anythingLlmChat(message: string): Promise<{
+async function anythingLlmChat(
+  message: string,
+  workspaceSlug: string,
+  options?: { sessionId?: string; mode?: 'chat' | 'query' },
+): Promise<{
   text: string
   error: string | null
   sources: AnythingLlmSource[] | null
 }> {
   const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
   const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
-  const anythingLlmWorkspace = Deno.env.get('ANYTHINGLLM_WORKSPACE')!
+
+  // AnythingLLM defaults to a single API session when `sessionId` is omitted,
+  // so all clients share one rolling history (huge prompts, "I already
+  // answered", and garbled context). Map each app thread to its own session.
+  //
+  // Use `mode: "query"` for RAG turns so behavior matches workspaces configured
+  // with chatMode "query" in the UI (document-grounded answers). The API body
+  // `mode` overrides per request; sending `chat` caused thinner / different
+  // retrieval than the same question typed in AnythingLLM desktop.
+  // Title generation passes `mode: "chat"` because its prompt is not a doc query.
+  const mode = options?.mode ?? 'query'
+  const body: Record<string, unknown> = { message, mode }
+  if (options?.sessionId) body.sessionId = options.sessionId
 
   const response = await fetch(
-    `${anythingLlmUrl}/api/v1/workspace/${anythingLlmWorkspace}/stream-chat`,
+    `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
     {
       method: 'POST',
       headers: {
@@ -56,7 +83,7 @@ async function anythingLlmChat(message: string): Promise<{
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
       },
-      body: JSON.stringify({ message, mode: 'chat' }),
+      body: JSON.stringify(body),
     },
   )
 
@@ -144,7 +171,14 @@ function normalizeTitle(raw: string): string | null {
   return t
 }
 
-async function generateThreadTitle(userMessage: string): Promise<string | null> {
+// Title generation always runs against the narrated workspace regardless of
+// which source(s) the user chose for the turn. Titles describe the topic of
+// the user's question, not the workspace — and routing them to a single
+// workspace keeps costs predictable when the user picks "both".
+async function generateThreadTitle(
+  userMessage: string,
+  threadId: string,
+): Promise<string | null> {
   const prompt =
     'Generate a 3 to 6 word title that describes the topic of the user request below. ' +
     'The title is shown in a chat history sidebar, so it must be concise and readable. ' +
@@ -153,7 +187,14 @@ async function generateThreadTitle(userMessage: string): Promise<string | null> 
     `User request: ${userMessage}`
 
   try {
-    const { text, error } = await anythingLlmChat(prompt)
+    const { text, error } = await anythingLlmChat(
+      prompt,
+      workspaceSlugFor('narrated'),
+      {
+        sessionId: `book-of-heaven-title-${threadId}`,
+        mode: 'chat',
+      },
+    )
     if (error || !text.trim()) {
       console.warn('Title generation returned no usable text', { error })
       return null
@@ -163,6 +204,28 @@ async function generateThreadTitle(userMessage: string): Promise<string | null> 
     console.warn('Title generation failed (non-fatal)', err)
     return null
   }
+}
+
+// Which AnythingLLM workspaces to call for a given user-selected source.
+function workspacesFor(source: Source): AssistantSource[] {
+  if (source === 'text') return ['text']
+  if (source === 'narrated') return ['narrated']
+  return ['text', 'narrated']
+}
+
+// Turn one AnythingLLM call's result into the `reply` string we persist and
+// return to the client. Matches the old fallback copy so behavior is stable.
+function pickReplyText(
+  result: { text: string; error: string | null },
+  workspaceSlug: string,
+): string {
+  if (result.text.trim().length > 0) return result.text
+  if (result.error) return `AnythingLLM error: ${result.error}`
+  return (
+    'The assistant returned no text. Check the AnythingLLM desktop app: workspace "' +
+    workspaceSlug +
+    '" must have documents embedded and an LLM configured.'
+  )
 }
 
 serve(async (req) => {
@@ -194,7 +257,13 @@ serve(async (req) => {
     }
     const user = userData.user
 
-    let body: { message?: unknown; thread_id?: unknown; project_id?: unknown }
+    let body: {
+      message?: unknown
+      thread_id?: unknown
+      project_id?: unknown
+      source?: unknown
+      turn_id?: unknown
+    }
     try {
       body = await req.json()
     } catch {
@@ -223,6 +292,30 @@ serve(async (req) => {
     }
     const threadId = threadIdRaw
 
+    const turnIdRaw = body?.turn_id
+    if (typeof turnIdRaw !== 'string' || !uuidPattern.test(turnIdRaw)) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid turn_id (expected UUID)' }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+    const turnId = turnIdRaw
+
+    const sourceRaw = body?.source
+    if (
+      sourceRaw !== 'text' &&
+      sourceRaw !== 'narrated' &&
+      sourceRaw !== 'both'
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing or invalid source (expected 'text', 'narrated', or 'both')",
+        }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+    const source: Source = sourceRaw
+
     // project_id is optional. When present (only on the very first message of
     // a thread started from a project page) we stamp the thread's project_id
     // at upsert time. For later messages in that same thread we never trust
@@ -242,7 +335,14 @@ serve(async (req) => {
 
     const { error: insertUserError } = await supabase
       .from('chat_messages')
-      .insert({ user_id: user.id, role: 'user', content: message, thread_id: threadId })
+      .insert({
+        user_id: user.id,
+        role: 'user',
+        content: message,
+        thread_id: threadId,
+        turn_id: turnId,
+        source,
+      })
     if (insertUserError) {
       console.error('Failed to insert user message', insertUserError)
       throw insertUserError
@@ -338,47 +438,57 @@ serve(async (req) => {
       ? `You are acting inside a user's project. Follow these project-level instructions for the rest of this conversation:\n\n---\n${projectInstructions}\n---\n\nUser message:\n${message}`
       : message
 
-    // Run the main chat call and the (optional) title generation in parallel.
-    // The title call is much smaller than the main response so it typically
-    // finishes first and doesn't extend total latency.
-    const [mainResult, title] = await Promise.all([
-      anythingLlmChat(composedMessage),
-      needsTitle ? generateThreadTitle(titleSeed) : Promise.resolve(null),
+    // Fan out across the requested workspace(s). For "both" we issue the
+    // two AnythingLLM calls in parallel alongside the title-generation call;
+    // total latency is bounded by the slower workspace response rather than
+    // the sum. Each workspace keeps its own retrieval `sources` payload —
+    // the frontend renders them in a side-by-side column per workspace, so
+    // merging them on the server would lose which citation came from where.
+    const workspaces = workspacesFor(source)
+    const mainResultsPromise = Promise.all(
+      workspaces.map(async (ws) => {
+        const slug = workspaceSlugFor(ws)
+        const result = await anythingLlmChat(composedMessage, slug, {
+          sessionId: threadId,
+          mode: 'query',
+        })
+        return { ws, slug, result }
+      }),
+    )
+
+    const [mainResults, title] = await Promise.all([
+      mainResultsPromise,
+      needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
     ])
 
-    let reply: string
-    if (mainResult.text.trim().length > 0) {
-      reply = mainResult.text
-    } else if (mainResult.error) {
-      reply = `AnythingLLM error: ${mainResult.error}`
-    } else {
-      reply =
-        'The assistant returned no text. Check the AnythingLLM desktop app: workspace "' +
-        (Deno.env.get('ANYTHINGLLM_WORKSPACE') ?? '') +
-        '" must have documents embedded and an LLM configured.'
-    }
-
-    // Persist the retrieval sources alongside the assistant message so the
-    // citation → PDF-page / YouTube-timestamp links survive a page reload
-    // (the frontend resolves those links from this payload — see
-    // docs/SPEC-source-linking.md). We deliberately store whatever shape
-    // AnythingLLM sent: the frontend is defensive about fields, and we want
-    // to be able to improve the matching logic later without a migration.
-    const sourcesForDb = mainResult.sources && mainResult.sources.length > 0
-      ? mainResult.sources
-      : null
+    // Persist one assistant row per workspace. All rows share the turn_id
+    // with the user row, so the frontend can group them for side-by-side
+    // rendering regardless of the order they land in chat_messages.
+    const assistantRows = mainResults.map(({ ws, slug, result }) => {
+      const reply = pickReplyText(result, slug)
+      const sourcesForDb =
+        result.sources && result.sources.length > 0 ? result.sources : null
+      return {
+        row: {
+          user_id: user.id,
+          role: 'assistant' as const,
+          content: reply,
+          thread_id: threadId,
+          turn_id: turnId,
+          source: ws,
+          sources: sourcesForDb,
+        },
+        reply,
+        ws,
+        sources: sourcesForDb,
+      }
+    })
 
     const { error: insertAssistantError } = await supabase
       .from('chat_messages')
-      .insert({
-        user_id: user.id,
-        role: 'assistant',
-        content: reply,
-        thread_id: threadId,
-        sources: sourcesForDb,
-      })
+      .insert(assistantRows.map((r) => r.row))
     if (insertAssistantError) {
-      console.error('Failed to insert assistant message', insertAssistantError)
+      console.error('Failed to insert assistant messages', insertAssistantError)
       throw insertAssistantError
     }
 
@@ -399,10 +509,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        reply,
         thread_id: threadId,
+        turn_id: turnId,
         title: title ?? null,
-        sources: sourcesForDb,
+        replies: assistantRows.map((r) => ({
+          source: r.ws,
+          reply: r.reply,
+          sources: r.sources,
+        })),
       }),
       { status: 200, headers: jsonHeaders },
     )
