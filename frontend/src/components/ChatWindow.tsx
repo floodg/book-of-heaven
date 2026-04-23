@@ -822,6 +822,42 @@ export function ChatWindow({
               )
             }
 
+            // When tab layout is active and this is a single-source reply,
+            // wrap it in the same chat-turn-tabs shell so the content column
+            // stays aligned with split-source tab turns above/below it.
+            if (bothReplyLayout === 'tab' && turn.assistants.length === 1) {
+              const m = turn.assistants[0]
+              const src =
+                m.source === 'text' || m.source === 'narrated'
+                  ? m.source
+                  : null
+              if (src) {
+                return (
+                  <div key={turn.key} className="chat-turn">
+                    {userBubble}
+                    <div className="chat-turn-tabs">
+                      <div className="chat-tab-strip">
+                        <span
+                          className={`chat-tab-btn chat-tab-btn-${src} chat-tab-btn-active chat-tab-btn-solo`}
+                          aria-label={sourceSectionTitle(src)}
+                        >
+                          {sourceSectionTitle(src)}
+                        </span>
+                      </div>
+                      <div className="chat-tab-content">
+                        <AssistantBubble
+                          message={m}
+                          youtubeMap={youtubeMap}
+                          pdfPages={pdfPages}
+                          showChip={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+            }
+
             return (
               <div key={turn.key} className="chat-turn">
                 {userBubble}

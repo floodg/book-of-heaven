@@ -552,6 +552,15 @@
   box-shadow: 0 2px 8px rgba(63, 90, 42, 0.25);
 }
 
+/* Solo label shown when the user replied with a single source in a tab-layout
+ * thread. It looks like the active tab but is a <span>, not a <button>, so
+ * it communicates "this is the source" without implying something is clickable. */
+.chat-tab-btn-solo {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
 .chat-tab-content {
   flex: 1;
   min-width: 0;
