@@ -6,6 +6,7 @@ import {
   useParams,
 } from 'react-router-dom'
 import { ChatWindow } from '../components/ChatWindow'
+import type { Source } from '../lib/source'
 import { useWorkspace } from '../lib/WorkspaceContext'
 import type { ProtectedOutletContext } from './ProtectedLayout'
 
@@ -16,6 +17,9 @@ import type { ProtectedOutletContext } from './ProtectedLayout'
  */
 export interface ChatPageRouteState {
   initialMessage?: string
+  /** Source selection the user made on ProjectDetailPage's compose box.
+   *  When omitted, ChatWindow falls back to the user's persisted preference. */
+  initialSource?: Source
   projectId?: string
 }
 
@@ -87,6 +91,7 @@ export function ChatPage() {
       threadId={threadId ?? null}
       projectId={state?.projectId ?? null}
       initialMessage={state?.initialMessage ?? null}
+      initialSource={state?.initialSource ?? null}
       breadcrumb={breadcrumb}
       onAssistantResponse={handleAssistantResponse}
     />

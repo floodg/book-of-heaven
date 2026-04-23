@@ -20,11 +20,11 @@ anythingllm/
 | File | Contents |
 |---|---|
 | `*.prompt.md` | The workspace's system prompt. Plain text; markdown is only used for author readability. |
-| `*.config.json` | Slug, display name, reference to the prompt file, and all chat/retrieval settings (model, `topN`, temperature, vector search mode, etc.). |
+| `*.config.json` | Slug, display name, reference to the prompt file, and all chat/retrieval settings (model, `topN`, temperature, vector search mode, etc.). The narrated (VTT) config keeps **`similarityThreshold` very low (0)** because VTT vector scores are smaller; the text (PDF) config uses **`0.25`** (AnythingLLM’s “Low / ≥ 0.25” preset) for better recall than a stricter value like `0.5`. |
 
 What is **not** captured:
 
-- **Embedded documents.** Your transcripts live inside AnythingLLM storage and aren't versioned here. Adding the 241 VTT files to a fresh workspace is a separate step (upload via UI or via the AnythingLLM API).
+- **Embedded documents.** Your transcripts live inside AnythingLLM storage and aren't versioned here. Adding the 221 VTT files to a fresh workspace is a separate step (upload via UI or via the AnythingLLM API).
 - **API keys** and per-instance secrets. Those belong in `.env` files that are gitignored.
 
 ## Applying a config
@@ -77,9 +77,20 @@ curl -s -H "Authorization: Bearer $ANYTHINGLLM_KEY" \
 
 ## Deployment workflow
 
+Both workspaces — `book-of-heaven-text` and `book-of-heaven-narrated` — must exist and be populated on every instance (local + VPS). The chat-proxy edge function picks one or the other (or both, in parallel) per request based on the frontend's per-message source selector; if a slug is missing, that source will surface an error in the UI instead of silently falling back.
+
 Typical flow when deploying to the VPS for the first time:
 
 1. Install AnythingLLM on the VPS (see `docs/vps-setup.md`).
-2. Upload/embed the VTT transcripts (241 files).
-3. Run `apply-workspace.mjs` against the VPS URL to configure settings + system prompt.
-4. Run the same command against local whenever you pull prompt changes from the repo, so dev parity is maintained.
+2. Create **both** workspaces and embed their documents:
+   - `book-of-heaven-narrated`: 221 VTT transcripts of Francis Hogan's readings.
+   - `book-of-heaven-text`: the 36 diary volume PDFs.
+3. Run `apply-workspace.mjs` against the VPS URL **once per workspace** to configure settings + system prompt:
+
+   ```bash
+   node anythingllm/apply-workspace.mjs \
+     --config anythingllm/workspaces/book-of-heaven-narrated.config.json
+   node anythingllm/apply-workspace.mjs \
+     --config anythingllm/workspaces/book-of-heaven-text.config.json
+   ```
+4. Run the same commands against local whenever you pull prompt changes from the repo, so dev parity is maintained.

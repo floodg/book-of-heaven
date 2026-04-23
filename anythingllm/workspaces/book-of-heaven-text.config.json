@@ -6,7 +6,7 @@
   "settings": {
     "openAiTemp": 0.7,
     "openAiHistory": 10,
-    "similarityThreshold": 0.5,
+    "similarityThreshold": 0.25,
     "chatProvider": "anthropic",
     "chatModel": "claude-sonnet-4-6",
     "topN": 8,

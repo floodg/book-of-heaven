@@ -1,0 +1,45 @@
+.source-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #e7d5b3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fffdf8;
+}
+
+.source-toggle-option {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a2e18;
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+  border-right: 1px solid #e7d5b3;
+  letter-spacing: 0.01em;
+}
+
+.source-toggle-option:last-child {
+  border-right: none;
+}
+
+.source-toggle-option:hover:not(:disabled):not(.source-toggle-option-selected) {
+  background: #f5ead4;
+}
+
+.source-toggle-option-selected {
+  background: #92400e;
+  color: #ffffff;
+}
+
+.source-toggle-option:disabled {
+  color: #b8a593;
+  cursor: not-allowed;
+}
+
+.source-toggle-option:focus-visible {
+  outline: 2px solid #92400e;
+  outline-offset: -2px;
+}

@@ -90,6 +90,38 @@
   justify-content: flex-end;
 }
 
+.chat-user-question-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 75%;
+}
+
+.chat-user-question-wrap .chat-bubble-user {
+  max-width: 100%;
+}
+
+.chat-copy-question {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(74, 46, 24, 0.65);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.chat-copy-question:hover {
+  background: rgba(146, 64, 14, 0.1);
+  color: #78350f;
+}
+
 .chat-bubble-row-assistant {
   justify-content: flex-start;
 }
@@ -181,6 +213,89 @@
   color: #1c0a00;
   max-width: 85%;
   border-radius: 16px 16px 16px 4px;
+}
+
+/* Small pill label above an assistant bubble identifying which AnythingLLM
+ * workspace produced the reply. Shown whenever a row has a concrete source
+ * (text or narrated) — always on in the split layout, optional elsewhere.
+ * The two variants get slightly different accent colors so users can tell
+ * them apart at a glance when scanning a long conversation. */
+.chat-bubble-source-chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-transform: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+  max-width: 100%;
+}
+
+.chat-bubble-source-chip-text {
+  background: #f5ead4;
+  color: #7a3509;
+  border-color: #e7d5b3;
+}
+
+.chat-bubble-source-chip-narrated {
+  background: #eaf1e2;
+  color: #3f5a2a;
+  border-color: #cdd9bc;
+}
+
+/* Group container for a single user-question + assistant-reply(s) pair.
+ * Lays the bubbles out with the normal inter-message gap; the split variant
+ * drops the two assistant replies into a two-column grid below the user
+ * message. Collapses to stacked on narrow viewports so nothing gets cramped. */
+.chat-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-turn-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(16px, 3vw, 28px);
+  align-items: stretch;
+}
+
+/* Side-by-side needs more horizontal room than a single column; otherwise
+ * line lengths are painfully short. When any turn uses the split grid,
+ * widen the chat column and keep breadcrumb + input aligned with it. */
+.chat-window:has(.chat-turn-split) .chat-breadcrumb-inner,
+.chat-window:has(.chat-turn-split) .chat-messages-inner,
+.chat-window:has(.chat-turn-split) .chat-input-bar-inner {
+  max-width: 1180px;
+}
+
+@media (max-width: 900px) {
+  .chat-turn-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Inside a split turn, each assistant bubble should fill its column rather
+ * than sit at 85% — otherwise the two columns look unbalanced and the chip
+ * floats awkwardly. The row wrapper also drops its default flex alignment so
+ * the grid owns the layout. */
+.chat-bubble-row-split {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.chat-bubble-row-split .chat-bubble-assistant {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1 1 auto;
 }
 
 .chat-typing {
@@ -276,6 +391,16 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.chat-input-bar-inner .chat-input {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.chat-input-bar-inner .source-toggle {
+  flex: 0 0 auto;
 }
 
 .chat-input {
