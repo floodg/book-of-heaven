@@ -136,9 +136,9 @@ const BOTH_LAYOUT_OPTIONS: {
     title: 'Show text and narration in two columns',
   },
   {
-    value: 'accordion',
-    label: 'Accordion',
-    title: 'Stack the two replies in expandable sections',
+    value: 'tab',
+    label: 'Tab view',
+    title: 'Switch between sources using a sticky side tab',
   },
 ]
 
@@ -181,6 +181,59 @@ function BothLayoutToggle({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function SplitTurnTabs({
+  assistants,
+  youtubeMap,
+  pdfPages,
+}: {
+  assistants: Message[]
+  youtubeMap: Record<string, string>
+  pdfPages: PdfPagesIndex
+}) {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const safeIdx = activeIdx < assistants.length ? activeIdx : 0
+  const active = assistants[safeIdx]
+  return (
+    <div className="chat-turn-tabs">
+      <div className="chat-tab-strip">
+        {assistants.map((m, i) => {
+          const title =
+            m.source === 'text' || m.source === 'narrated'
+              ? sourceSectionTitle(m.source)
+              : 'Reply'
+          const accentKey = m.source === 'text' ? 'text' : 'narrated'
+          return (
+            <button
+              key={m.id}
+              type="button"
+              className={[
+                'chat-tab-btn',
+                `chat-tab-btn-${accentKey}`,
+                i === safeIdx ? 'chat-tab-btn-active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setActiveIdx(i)}
+              aria-selected={i === safeIdx}
+              role="tab"
+            >
+              {title}
+            </button>
+          )
+        })}
+      </div>
+      <div className="chat-tab-content" role="tabpanel">
+        <AssistantBubble
+          message={active}
+          youtubeMap={youtubeMap}
+          pdfPages={pdfPages}
+          showChip={false}
+        />
+      </div>
     </div>
   )
 }
@@ -732,56 +785,18 @@ export function ChatWindow({
             const split = turn.assistants.length > 1
 
             if (split) {
-              if (bothReplyLayout === 'accordion') {
+              if (bothReplyLayout === 'tab') {
                 return (
                   <div
                     key={turn.key}
                     className="chat-turn chat-turn-split-wrap"
                   >
                     {userBubble}
-                    <div className="chat-turn-accordion">
-                      {turn.assistants.map((m, index) => {
-                        const title =
-                          m.source === 'text' || m.source === 'narrated'
-                            ? sourceSectionTitle(m.source)
-                            : 'Reply'
-                        const accentClass =
-                          m.source === 'text'
-                            ? 'text'
-                            : m.source === 'narrated'
-                              ? 'narrated'
-                              : 'default'
-                        return (
-                          <details
-                            key={m.id}
-                            className="chat-accordion-item"
-                            defaultOpen={index === 0}
-                          >
-                            <summary
-                              className={`chat-accordion-summary chat-accordion-summary-${accentClass}`}
-                            >
-                              <span className="chat-accordion-summary-text">
-                                {title}
-                              </span>
-                              <span
-                                className="chat-accordion-chevron"
-                                aria-hidden
-                              />
-                            </summary>
-                            <div className="chat-accordion-body">
-                              <div className="chat-bubble-row chat-bubble-row-assistant">
-                                <AssistantBubble
-                                  message={m}
-                                  youtubeMap={youtubeMap}
-                                  pdfPages={pdfPages}
-                                  showChip={false}
-                                />
-                              </div>
-                            </div>
-                          </details>
-                        )
-                      })}
-                    </div>
+                    <SplitTurnTabs
+                      assistants={turn.assistants}
+                      youtubeMap={youtubeMap}
+                      pdfPages={pdfPages}
+                    />
                   </div>
                 )
               }

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /** How to show Text + Narrated replies for the same turn. */
-export type BothReplyLayout = 'split' | 'accordion'
+export type BothReplyLayout = 'split' | 'tab'
 
 const STORAGE_KEY = 'boh.bothReplyLayout'
-const VALID: readonly BothReplyLayout[] = ['split', 'accordion']
+const VALID: readonly BothReplyLayout[] = ['split', 'tab']
 
 export function loadBothReplyLayout(): BothReplyLayout {
   if (typeof window === 'undefined') return 'split'
