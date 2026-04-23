@@ -17,6 +17,7 @@ import {
 } from '../lib/bothReplyLayout'
 import { usePreferredSource, type Source } from '../lib/source'
 import './ChatWindow.css'
+import './BothLayout.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
 // assistant row. The user value can be 'both'; assistant rows are always
@@ -755,7 +756,7 @@ export function ChatWindow({
                           <details
                             key={m.id}
                             className="chat-accordion-item"
-                            defaultOpen={index === 0}
+                            open={index === 0}
                           >
                             <summary
                               className={`chat-accordion-summary chat-accordion-summary-${accentClass}`}
