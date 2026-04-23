@@ -756,7 +756,6 @@ export function ChatWindow({
                           <details
                             key={m.id}
                             className="chat-accordion-item"
-                            open={index === 0}
                           >
                             <summary
                               className={`chat-accordion-summary chat-accordion-summary-${accentClass}`}
