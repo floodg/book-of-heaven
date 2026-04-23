@@ -1,0 +1,136 @@
+/* Both-sources layout toggle (Split | Accordion) — mirrors SourceToggle.css */
+.both-layout-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #e7d5b3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fffdf8;
+}
+
+.both-layout-toggle-option {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a2e18;
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+  border-right: 1px solid #e7d5b3;
+  letter-spacing: 0.01em;
+}
+
+.both-layout-toggle-option:last-child {
+  border-right: none;
+}
+
+.both-layout-toggle-option:hover:not(:disabled):not(.both-layout-toggle-option-selected) {
+  background: #f5ead4;
+}
+
+.both-layout-toggle-option-selected {
+  background: #92400e;
+  color: #ffffff;
+}
+
+.both-layout-toggle-option:disabled {
+  color: #b8a593;
+  cursor: not-allowed;
+}
+
+.both-layout-toggle-option:focus-visible {
+  outline: 2px solid #92400e;
+  outline-offset: -2px;
+}
+
+/* Keep toggle from shrinking when the input wraps */
+.chat-input-bar-inner .both-layout-toggle {
+  flex: 0 0 auto;
+}
+
+/* Accordion layout for split turns (Text/Narrated stacked with expand/collapse) */
+.chat-turn-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-accordion-item {
+  border: 1px solid #e7d5b3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fffdf8;
+}
+
+.chat-accordion-item + .chat-accordion-item {
+  margin-top: 6px;
+}
+
+/* Reset native disclosure markers */
+.chat-accordion-item > summary::-webkit-details-marker {
+  display: none;
+}
+.chat-accordion-item > summary::marker {
+  content: '';
+}
+
+.chat-accordion-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  border-bottom: 1px solid #e7d5b3;
+}
+
+/* Accent variants — align with source chip palette */
+.chat-accordion-summary.chat-accordion-summary-text {
+  background: #f5ead4;
+  color: #7a3509;
+  border-bottom-color: #e7d5b3;
+}
+.chat-accordion-summary.chat-accordion-summary-narrated {
+  background: #eaf1e2;
+  color: #3f5a2a;
+  border-bottom-color: #cdd9bc;
+}
+.chat-accordion-summary.chat-accordion-summary-default {
+  background: #fdf8f0;
+  color: #4a2e18;
+  border-bottom-color: #e7d5b3;
+}
+
+/* Title inside summary */
+.chat-accordion-summary .chat-accordion-summary-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chevron indicator */
+.chat-accordion-chevron {
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  opacity: 0.85;
+  flex: 0 0 auto;
+}
+.chat-accordion-item[open] .chat-accordion-chevron {
+  transform: rotate(45deg);
+}
+
+.chat-accordion-body {
+  padding: 10px 12px;
+  background: #fffdf8;
+}
+
