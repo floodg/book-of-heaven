@@ -3,6 +3,8 @@
 ## Files
 ```
 frontend/src/components/ChatWindow.tsx
+frontend/src/components/ChatJobNotifier.tsx
+frontend/src/routes/ProtectedLayout.tsx
 frontend/src/components/CitationBadge.tsx
 ```
 
@@ -60,7 +62,7 @@ When `threadId` is `null`, clear messages to `[]` to show an empty "new chat" st
 1. Compute `isNewThread = !threadId` and `submitThreadId = threadId ?? crypto.randomUUID()`.
 2. Append the user message to local `messages` state immediately (optimistic).
 3. Clear input, set `loading = true`.
-4. POST to the Edge Function with **both** `message` and `thread_id`:
+4. POST to `chat-proxy` with `message`, `thread_id`, a client-minted `turn_id` (UUID) for idempotency and grouping, and `source` (`text` | `narrated` | `both`); include `project_id` when the thread is being created in a project context. See the edge spec for the exact contract.
    ```typescript
    const res = await fetch(
      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`,
@@ -70,16 +72,28 @@ When `threadId` is `null`, clear messages to `[]` to show an empty "new chat" st
          'Authorization': `Bearer ${session.access_token}`,
          'Content-Type': 'application/json',
        },
-       body: JSON.stringify({ message: trimmed, thread_id: submitThreadId }),
+       body: JSON.stringify({
+         message: trimmed,
+         thread_id: submitThreadId,
+         turn_id: submitTurnId,
+         source: effectiveSource,
+         project_id: projectId ?? undefined,
+       }),
      },
    )
    ```
 5. Handle the response:
-   - **`res.ok`** → parse `{ reply, thread_id }`, append the assistant message, and if `isNewThread` set `skipNextFetchForRef.current = submitThreadId`, then call `onAssistantResponse?.(submitThreadId)`.
-   - **`res.status === 401`** → token is dead. Show a clear "Your session has expired… signing you out" bubble, call `supabase.auth.signOut()`, and let the app's `onAuthStateChange` listener route back to `AuthPage`. Do **not** retry.
-   - **Other non-2xx** → clone the response and try to read `{ error: "..." }`; display that message verbatim. Fall back to status-based copy (`"The server hit an unexpected error…"` for 5xx, `"The request was rejected. Please refresh and try again."` for 400, etc.) if no `error` field is present.
+   - **`res.status === 200`** (idempotent replay, same `turn_id` as an already-finished job) — parse the JSON body with `replies` (and optional `title`), append the assistant message(s) like before, set `skipNextFetchForRef` for new threads, call `onAssistantResponse`, then `setLoading(false)`.
+   - **`res.status === 202`** (normal path) — read `job_id` from the body. Open `EventSource` to `…/functions/v1/chat-job-events?job_id=…&access_token=<session access token>`, parse each SSE `data:` JSON line. On `event: "complete"`, use `payload` as the same `replies` structure as 200, merge assistant bubbles, `setLoading(false)`, call `onAssistantResponse`. On `event: "error"`, show an assistant error bubble. If the stream errors or times out, **leave loading true** — a Supabase Realtime `INSERT` on `chat_messages` for this `thread_id` and `turn_id` still applies the result (and expects two assistant rows when the user source is `both` before turning off the typing indicator). Close the `EventSource` when done or on unmount.
+   - **`res.status === 401`** — token is dead. Show a clear "Your session has expired… signing you out" bubble, call `supabase.auth.signOut()`, and let the app's `onAuthStateChange` listener route back to `AuthPage`. Do **not** retry.
+   - **`res.status === 409`** — this `turn_id` already failed on the server; show the server `error` string.
+   - **Other non-2xx** — clone the response and try to read `{ error: "..." }`; display that message verbatim. Fall back to status-based copy (`"The server hit an unexpected error…"` for 5xx, `"The request was rejected. Please refresh and try again."` for 400, etc.) if no `error` field is present.
    - **Network-level failure (thrown from `fetch`)** → show `"Could not reach the assistant. Check that the Supabase functions server is running and try again."`.
-6. `finally` → `setLoading(false)`.
+6. `finally` — call `setLoading(false)` only when the request is **not** waiting on a background job (`202` defers the finally until SSE or Realtime applies the reply; see implementation).
+
+### `ChatJobNotifier` (global toast)
+
+`ProtectedLayout` renders `ChatJobNotifier` so that Supabase Realtime on `INSERT` to `chat_messages` (role `assistant`) and `UPDATE` to `chat_turn_jobs` (`status: error`) can show a fixed-position toast with a "View" link to `/c/<threadId>` when the event is for a **different** thread than the one in the current URL. It calls `WorkspaceContext.refresh()` so the sidebar picks up new titles and thread rows.
 
 ### Auto-scroll
 After each new message (and when `loading` toggles to show the typing indicator), scroll the message list to the bottom via a ref and `ref.current?.scrollIntoView({ behavior: 'smooth' })`.

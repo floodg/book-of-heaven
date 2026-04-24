@@ -74,6 +74,7 @@ export function ThreadRow({
 
   const display = labelForThread(thread)
   const truncated = truncate(display, 44)
+  const isJobPending = workspace.pendingThreadIds.has(thread.threadId)
 
   // Close on outside click.
   useEffect(() => {
@@ -170,6 +171,17 @@ export function ThreadRow({
         title={display + (project ? ` · ${project.name}` : '')}
       >
         <span className="thread-row-text">{truncated}</span>
+        {isJobPending ? (
+          <span
+            className="thread-row-pending"
+            title="Response generating…"
+            aria-label="Response generating"
+          >
+            <span className="thread-row-pending-dot" />
+            <span className="thread-row-pending-dot" />
+            <span className="thread-row-pending-dot" />
+          </span>
+        ) : null}
         {(!hideProjectIndicator && project) || thread.pinnedAt ? (
           <span className="thread-row-meta">
             {thread.pinnedAt ? <IconPin size={11} /> : null}

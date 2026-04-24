@@ -23,6 +23,42 @@
   white-space: nowrap;
 }
 
+.thread-row-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.thread-row-pending-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: thread-row-pending-pulse 1.2s ease-in-out infinite;
+}
+
+.thread-row-pending-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thread-row-pending-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thread-row-pending-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .thread-row:hover {
   background: rgba(146, 64, 14, 0.06);
 }

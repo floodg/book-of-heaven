@@ -1,5 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+
+declare const EdgeRuntime: {
+  waitUntil(promise: PromiseLike<unknown>): void
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,9 +17,6 @@ const jsonHeaders = {
   'Content-Type': 'application/json',
 }
 
-// The two AnythingLLM workspaces this proxy fans out to. "Text" is the
-// diary PDFs; "Narrated" is Francis Hogan's audio transcripts. Users pick
-// per-message which one(s) to query via the `source` field on each request.
 type Source = 'text' | 'narrated' | 'both'
 type AssistantSource = 'text' | 'narrated'
 
@@ -23,32 +25,16 @@ function workspaceSlugFor(source: AssistantSource): string {
   return Deno.env.get('ANYTHINGLLM_WORKSPACE_NARRATED')!
 }
 
-// A single retrieved chunk AnythingLLM surfaces alongside the generated reply.
-// AnythingLLM emits these on the finalize SSE frame (and sometimes also on
-// textResponseChunk frames). We pass them through untouched to the frontend
-// so it can resolve per-citation links to the underlying PDF page / YouTube
-// timestamp — see docs/SPEC-source-linking.md.
 export interface AnythingLlmSource {
   title?: string
   chunkSource?: string
   text?: string
   score?: number
   _distance?: number
-  // AnythingLLM sometimes adds a `metadata` object with page info. We keep
-  // the raw shape here and let the frontend dig as needed.
   metadata?: Record<string, unknown>
   [key: string]: unknown
 }
 
-// Call AnythingLLM's streaming chat endpoint and aggregate all chunks into a
-// single string. Returns { text, error, sources }:
-// - `error` is the AnythingLLM-reported error string if the stream sent one,
-//   otherwise null.
-// - `sources` is the last non-empty `sources` array we saw on any SSE frame
-//   (AnythingLLM typically sends it on the finalize frame; taking the last
-//   occurrence is safe because earlier frames either omit it or carry the
-//   same list).
-// Throws only on HTTP or transport failure.
 async function anythingLlmChat(
   message: string,
   workspaceSlug: string,
@@ -60,16 +46,6 @@ async function anythingLlmChat(
 }> {
   const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
   const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
-
-  // AnythingLLM defaults to a single API session when `sessionId` is omitted,
-  // so all clients share one rolling history (huge prompts, "I already
-  // answered", and garbled context). Map each app thread to its own session.
-  //
-  // Use `mode: "query"` for RAG turns so behavior matches workspaces configured
-  // with chatMode "query" in the UI (document-grounded answers). The API body
-  // `mode` overrides per request; sending `chat` caused thinner / different
-  // retrieval than the same question typed in AnythingLLM desktop.
-  // Title generation passes `mode: "chat"` because its prompt is not a doc query.
   const mode = options?.mode ?? 'query'
   const body: Record<string, unknown> = { message, mode }
   if (options?.sessionId) body.sessionId = options.sessionId
@@ -140,11 +116,6 @@ async function anythingLlmChat(
   return { text: fullText, error: llmError, sources }
 }
 
-// Clean up an LLM-generated title. The workspace system prompt pushes the
-// model toward long, citation-heavy answers, so even with a tight instruction
-// we defensively strip quotes, trailing punctuation, any leaked
-// `[Book of Heaven ...]` citations, "Title:" prefixes, and surrounding
-// markdown. Returns null if what's left isn't a usable title.
 function normalizeTitle(raw: string): string | null {
   let t = raw
     .replace(/\[Book of Heaven[^\]]*\]/gi, '')
@@ -153,28 +124,19 @@ function normalizeTitle(raw: string): string | null {
     .replace(/[*_`]/g, '')
     .trim()
 
-  // Take only the first line in case the model volunteered an explanation.
   const firstLine = t.split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0)
   if (!firstLine) return null
   t = firstLine
 
-  // Strip wrapping quotes (both straight and curly).
   t = t.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim()
-  // Trailing punctuation that hurts a sidebar label.
   t = t.replace(/[.!?,;:]+$/g, '').trim()
   t = t.replace(/\s+/g, ' ')
 
   if (t.length < 2) return null
-  // Safety cap: the UI also truncates, but we don't want to persist a 200-char
-  // paragraph if the model ignored the length hint.
   if (t.length > 60) t = t.slice(0, 60).replace(/\s+\S*$/, '').trim() + '…'
   return t
 }
 
-// Title generation always runs against the narrated workspace regardless of
-// which source(s) the user chose for the turn. Titles describe the topic of
-// the user's question, not the workspace — and routing them to a single
-// workspace keeps costs predictable when the user picks "both".
 async function generateThreadTitle(
   userMessage: string,
   threadId: string,
@@ -206,15 +168,12 @@ async function generateThreadTitle(
   }
 }
 
-// Which AnythingLLM workspaces to call for a given user-selected source.
 function workspacesFor(source: Source): AssistantSource[] {
   if (source === 'text') return ['text']
   if (source === 'narrated') return ['narrated']
   return ['text', 'narrated']
 }
 
-// Turn one AnythingLLM call's result into the `reply` string we persist and
-// return to the client. Matches the old fallback copy so behavior is stable.
 function pickReplyText(
   result: { text: string; error: string | null },
   workspaceSlug: string,
@@ -228,9 +187,226 @@ function pickReplyText(
   )
 }
 
+type JobResult = {
+  thread_id: string
+  turn_id: string
+  title: string | null
+  replies: Array<{
+    source: AssistantSource
+    reply: string
+    sources: AnythingLlmSource[] | null
+  }>
+}
+
+async function runChatTurn(
+  supabase: SupabaseClient,
+  ctx: {
+    userId: string
+    jobId: string
+    message: string
+    threadId: string
+    turnId: string
+    source: Source
+    incomingProjectId: string | null
+  },
+): Promise<void> {
+  const { userId, jobId, message, threadId, turnId, source, incomingProjectId } = ctx
+  const nowIso = new Date().toISOString()
+  const { error: markProcErr } = await supabase
+    .from('chat_turn_jobs')
+    .update({ status: 'processing', updated_at: nowIso })
+    .eq('id', jobId)
+    .eq('user_id', userId)
+  if (markProcErr) {
+    console.error('Failed to mark job processing', markProcErr)
+  }
+
+  try {
+    const upsertPayload: Record<string, unknown> = {
+      thread_id: threadId,
+      user_id: userId,
+    }
+    if (incomingProjectId) upsertPayload.project_id = incomingProjectId
+    const { error: ensureThreadError } = await supabase
+      .from('chat_threads')
+      .upsert(upsertPayload, { onConflict: 'thread_id', ignoreDuplicates: true })
+    if (ensureThreadError) {
+      console.warn('Failed to upsert chat_threads row', ensureThreadError)
+    }
+
+    const { data: threadRow, error: threadLookupError } = await supabase
+      .from('chat_threads')
+      .select('title, project_id')
+      .eq('thread_id', threadId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (threadLookupError) {
+      console.warn('chat_threads lookup failed; skipping title gen', threadLookupError)
+    }
+    const needsTitle = !threadRow?.title
+    const threadProjectId: string | null = threadRow?.project_id ?? null
+
+    let projectInstructions: string | null = null
+    if (threadProjectId) {
+      const { data: projectRow, error: projectLookupError } = await supabase
+        .from('chat_projects')
+        .select('instructions')
+        .eq('id', threadProjectId)
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (projectLookupError) {
+        console.warn('chat_projects lookup failed; skipping instructions', projectLookupError)
+      }
+      const raw = projectRow?.instructions
+      if (typeof raw === 'string' && raw.trim().length > 0) {
+        projectInstructions = raw.trim()
+      }
+    }
+
+    let titleSeed = message
+    if (needsTitle) {
+      const { data: earliestRows } = await supabase
+        .from('chat_messages')
+        .select('content, created_at')
+        .eq('user_id', userId)
+        .eq('thread_id', threadId)
+        .eq('role', 'user')
+        .order('created_at', { ascending: true })
+        .limit(1)
+      const earliest = earliestRows?.[0]?.content
+      if (typeof earliest === 'string' && earliest.trim().length > 0) {
+        titleSeed = earliest
+      }
+    }
+
+    const composedMessage = projectInstructions
+      ? `You are acting inside a user's project. Follow these project-level instructions for the rest of this conversation:\n\n---\n${projectInstructions}\n---\n\nUser message:\n${message}`
+      : message
+
+    const workspaces = workspacesFor(source)
+    const mainResultsPromise = Promise.all(
+      workspaces.map(async (ws) => {
+        const slug = workspaceSlugFor(ws)
+        const result = await anythingLlmChat(composedMessage, slug, {
+          sessionId: threadId,
+          mode: 'query',
+        })
+        return { ws, slug, result }
+      }),
+    )
+
+    const [mainResults, title] = await Promise.all([
+      mainResultsPromise,
+      needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
+    ])
+
+    const assistantRows = mainResults.map(({ ws, slug, result }) => {
+      const reply = pickReplyText(result, slug)
+      const sourcesForDb =
+        result.sources && result.sources.length > 0 ? result.sources : null
+      return {
+        row: {
+          user_id: userId,
+          role: 'assistant' as const,
+          content: reply,
+          thread_id: threadId,
+          turn_id: turnId,
+          source: ws,
+          sources: sourcesForDb,
+        },
+        reply,
+        ws,
+        sources: sourcesForDb,
+      }
+    })
+
+    const { error: insertAssistantError } = await supabase
+      .from('chat_messages')
+      .insert(assistantRows.map((r) => r.row))
+    if (insertAssistantError) {
+      console.error('Failed to insert assistant messages', insertAssistantError)
+      throw insertAssistantError
+    }
+
+    if (needsTitle && title) {
+      const { error: updateTitleError } = await supabase
+        .from('chat_threads')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('thread_id', threadId)
+        .eq('user_id', userId)
+        .is('title', null)
+      if (updateTitleError) {
+        console.warn('Failed to update chat_threads title', updateTitleError)
+      }
+    }
+
+    const resultPayload: JobResult = {
+      thread_id: threadId,
+      turn_id: turnId,
+      title: title ?? null,
+      replies: assistantRows.map((r) => ({
+        source: r.ws,
+        reply: r.reply,
+        sources: r.sources,
+      })),
+    }
+
+    const { error: completeErr } = await supabase
+      .from('chat_turn_jobs')
+      .update({
+        status: 'complete',
+        result: resultPayload,
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId)
+      .eq('user_id', userId)
+    if (completeErr) {
+      console.error('Failed to mark job complete', completeErr)
+    }
+  } catch (err) {
+    console.error('runChatTurn failed', err)
+    const msg = err instanceof Error ? err.message : 'Internal error'
+    const { error: failJobErr } = await supabase
+      .from('chat_turn_jobs')
+      .update({
+        status: 'error',
+        error_message: msg,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId)
+      .eq('user_id', userId)
+    if (failJobErr) {
+      console.error('Failed to mark job error', failJobErr)
+    }
+    const errSource: AssistantSource = workspacesFor(ctx.source)[0] ?? 'text'
+    const { error: failBubbleErr } = await supabase
+      .from('chat_messages')
+      .insert({
+        user_id: userId,
+        role: 'assistant',
+        content: 'The assistant could not finish this turn. ' + msg,
+        thread_id: threadId,
+        turn_id: turnId,
+        source: errSource,
+        sources: null,
+      })
+    if (failBubbleErr) {
+      console.warn('Failed to insert error assistant message', failBubbleErr)
+    }
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: jsonHeaders,
+    })
   }
 
   try {
@@ -316,11 +492,6 @@ serve(async (req) => {
     }
     const source: Source = sourceRaw
 
-    // project_id is optional. When present (only on the very first message of
-    // a thread started from a project page) we stamp the thread's project_id
-    // at upsert time. For later messages in that same thread we never trust
-    // the client — we always re-read the project from chat_threads — so the
-    // client can't sneak a message into a project it doesn't own.
     const projectIdRaw = body?.project_id
     let incomingProjectId: string | null = null
     if (projectIdRaw != null) {
@@ -333,6 +504,49 @@ serve(async (req) => {
       incomingProjectId = projectIdRaw
     }
 
+    const { data: existingJob, error: jobLookupErr } = await supabase
+      .from('chat_turn_jobs')
+      .select('id, status, result, error_message')
+      .eq('user_id', user.id)
+      .eq('turn_id', turnId)
+      .maybeSingle()
+    if (jobLookupErr) {
+      console.error('chat_turn_jobs lookup', jobLookupErr)
+    }
+
+    if (existingJob) {
+      if (existingJob.status === 'complete' && existingJob.result) {
+        return new Response(
+          JSON.stringify({
+            ...existingJob.result as JobResult,
+            job_id: existingJob.id,
+          }),
+          { status: 200, headers: jsonHeaders },
+        )
+      }
+      if (existingJob.status === 'pending' || existingJob.status === 'processing') {
+        return new Response(
+          JSON.stringify({
+            job_id: existingJob.id,
+            thread_id: threadId,
+            turn_id: turnId,
+            title: null,
+            status: 'accepted',
+          }),
+          { status: 202, headers: jsonHeaders },
+        )
+      }
+      if (existingJob.status === 'error') {
+        return new Response(
+          JSON.stringify({
+            error: existingJob.error_message ?? 'This turn failed. Start a new message to retry.',
+            job_id: existingJob.id,
+          }),
+          { status: 409, headers: jsonHeaders },
+        )
+      }
+    }
+
     const { error: insertUserError } = await supabase
       .from('chat_messages')
       .insert({
@@ -343,182 +557,133 @@ serve(async (req) => {
         turn_id: turnId,
         source,
       })
+
     if (insertUserError) {
+      if (insertUserError.code === '23505') {
+        const { data: afterRace } = await supabase
+          .from('chat_turn_jobs')
+          .select('id, status, result')
+          .eq('user_id', user.id)
+          .eq('turn_id', turnId)
+          .maybeSingle()
+        if (afterRace?.status === 'complete' && afterRace.result) {
+          return new Response(
+            JSON.stringify({ ...afterRace.result as JobResult, job_id: afterRace.id }),
+            { status: 200, headers: jsonHeaders },
+          )
+        }
+        if (afterRace?.id) {
+          return new Response(
+            JSON.stringify({
+              job_id: afterRace.id,
+              thread_id: threadId,
+              turn_id: turnId,
+              title: null,
+              status: 'accepted',
+            }),
+            { status: 202, headers: jsonHeaders },
+          )
+        }
+      }
       console.error('Failed to insert user message', insertUserError)
-      throw insertUserError
+      return new Response(
+        JSON.stringify({ error: 'Failed to record your message' }),
+        { status: 500, headers: jsonHeaders },
+      )
     }
 
-    // Every thread gets a chat_threads row as soon as its first message lands,
-    // even if title generation later fails. Projects reference chat_threads,
-    // so we can't wait for a successful title before creating the row or the
-    // UI can't assign the thread anywhere. The upsert with ignoreDuplicates
-    // makes this a safe no-op when the row already exists — importantly,
-    // that means a client passing project_id for an already-existing thread
-    // can NOT move it to a different project via this endpoint; moving
-    // threads between projects is a separate UI action on chat_threads.
-    const upsertPayload: Record<string, unknown> = {
+    const upsertPayload2: Record<string, unknown> = {
       thread_id: threadId,
       user_id: user.id,
     }
-    if (incomingProjectId) upsertPayload.project_id = incomingProjectId
+    if (incomingProjectId) upsertPayload2.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
       .from('chat_threads')
-      .upsert(upsertPayload, { onConflict: 'thread_id', ignoreDuplicates: true })
+      .upsert(upsertPayload2, { onConflict: 'thread_id', ignoreDuplicates: true })
     if (ensureThreadError) {
       console.warn('Failed to upsert chat_threads row', ensureThreadError)
     }
 
-    // A thread needs a title when its chat_threads row exists but has no
-    // title yet. This covers brand-new threads and older threads backfilled
-    // by migration 004 (which inserted rows with NULL title). We also pull
-    // the thread's project_id here so we can look up per-project instructions
-    // to prepend to the message — server-side, never from the request body.
-    const { data: threadRow, error: threadLookupError } = await supabase
+    const { data: threadRowPj, error: threadPjErr } = await supabase
       .from('chat_threads')
-      .select('title, project_id')
+      .select('project_id')
       .eq('thread_id', threadId)
       .eq('user_id', user.id)
       .maybeSingle()
-    if (threadLookupError) {
-      console.warn('chat_threads lookup failed; skipping title gen', threadLookupError)
+    if (threadPjErr) {
+      console.warn('chat_threads project lookup for job row', threadPjErr)
     }
-    const needsTitle = !threadRow?.title
-    const threadProjectId: string | null = threadRow?.project_id ?? null
+    const jobProjectId: string | null = threadRowPj?.project_id ?? null
 
-    // Pull per-project instructions (system prompt) if this thread lives in a
-    // project that has them configured. Empty / whitespace-only instructions
-    // are treated as absent so users can "clear" by deleting all text without
-    // needing a separate action.
-    let projectInstructions: string | null = null
-    if (threadProjectId) {
-      const { data: projectRow, error: projectLookupError } = await supabase
-        .from('chat_projects')
-        .select('instructions')
-        .eq('id', threadProjectId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (projectLookupError) {
-        console.warn('chat_projects lookup failed; skipping instructions', projectLookupError)
+    const { data: newJob, error: insertJobError } = await supabase
+      .from('chat_turn_jobs')
+      .insert({
+        user_id: user.id,
+        thread_id: threadId,
+        turn_id: turnId,
+        source,
+        project_id: jobProjectId,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+
+    if (insertJobError) {
+      if (insertJobError.code === '23505') {
+        const { data: j2 } = await supabase
+          .from('chat_turn_jobs')
+          .select('id, status, result, error_message')
+          .eq('user_id', user.id)
+          .eq('turn_id', turnId)
+          .maybeSingle()
+        if (j2?.status === 'complete' && j2.result) {
+          return new Response(
+            JSON.stringify({ ...j2.result as JobResult, job_id: j2.id }),
+            { status: 200, headers: jsonHeaders },
+          )
+        }
+        if (j2?.id) {
+          return new Response(
+            JSON.stringify({
+              job_id: j2.id,
+              thread_id: threadId,
+              turn_id: turnId,
+              title: null,
+              status: 'accepted',
+            }),
+            { status: 202, headers: jsonHeaders },
+          )
+        }
       }
-      const raw = projectRow?.instructions
-      if (typeof raw === 'string' && raw.trim().length > 0) {
-        projectInstructions = raw.trim()
-      }
+      console.error('Failed to insert job', insertJobError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to start assistant turn' }),
+        { status: 500, headers: jsonHeaders },
+      )
     }
 
-    // For a backfill case the user's first message in the thread isn't the one
-    // we just inserted — it's the oldest row in chat_messages. Pull it so the
-    // title reflects the actual topic rather than whatever follow-up they
-    // happen to be asking right now.
-    let titleSeed = message
-    if (needsTitle) {
-      const { data: earliestRows } = await supabase
-        .from('chat_messages')
-        .select('content, created_at')
-        .eq('user_id', user.id)
-        .eq('thread_id', threadId)
-        .eq('role', 'user')
-        .order('created_at', { ascending: true })
-        .limit(1)
-      const earliest = earliestRows?.[0]?.content
-      if (typeof earliest === 'string' && earliest.trim().length > 0) {
-        titleSeed = earliest
-      }
-    }
-
-    // For project threads we prepend the project's instructions as an inline
-    // system-style preamble on every turn. AnythingLLM's stream-chat endpoint
-    // doesn't expose a per-request system prompt slot, so we bake it into the
-    // `message` payload with clear delimiters. This does grow each request by
-    // the length of the instructions — fine for the text-sized prompts Claude
-    // users write, not fine if somebody pastes a whole book in there. The
-    // title generation call deliberately skips the instructions: titles
-    // should describe *the user's question*, not the project's framing.
-    const composedMessage = projectInstructions
-      ? `You are acting inside a user's project. Follow these project-level instructions for the rest of this conversation:\n\n---\n${projectInstructions}\n---\n\nUser message:\n${message}`
-      : message
-
-    // Fan out across the requested workspace(s). For "both" we issue the
-    // two AnythingLLM calls in parallel alongside the title-generation call;
-    // total latency is bounded by the slower workspace response rather than
-    // the sum. Each workspace keeps its own retrieval `sources` payload —
-    // the frontend renders them in a side-by-side column per workspace, so
-    // merging them on the server would lose which citation came from where.
-    const workspaces = workspacesFor(source)
-    const mainResultsPromise = Promise.all(
-      workspaces.map(async (ws) => {
-        const slug = workspaceSlugFor(ws)
-        const result = await anythingLlmChat(composedMessage, slug, {
-          sessionId: threadId,
-          mode: 'query',
-        })
-        return { ws, slug, result }
+    const jobId = newJob.id
+    EdgeRuntime.waitUntil(
+      runChatTurn(supabase, {
+        userId: user.id,
+        jobId,
+        message,
+        threadId,
+        turnId,
+        source,
+        incomingProjectId,
       }),
     )
 
-    const [mainResults, title] = await Promise.all([
-      mainResultsPromise,
-      needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
-    ])
-
-    // Persist one assistant row per workspace. All rows share the turn_id
-    // with the user row, so the frontend can group them for side-by-side
-    // rendering regardless of the order they land in chat_messages.
-    const assistantRows = mainResults.map(({ ws, slug, result }) => {
-      const reply = pickReplyText(result, slug)
-      const sourcesForDb =
-        result.sources && result.sources.length > 0 ? result.sources : null
-      return {
-        row: {
-          user_id: user.id,
-          role: 'assistant' as const,
-          content: reply,
-          thread_id: threadId,
-          turn_id: turnId,
-          source: ws,
-          sources: sourcesForDb,
-        },
-        reply,
-        ws,
-        sources: sourcesForDb,
-      }
-    })
-
-    const { error: insertAssistantError } = await supabase
-      .from('chat_messages')
-      .insert(assistantRows.map((r) => r.row))
-    if (insertAssistantError) {
-      console.error('Failed to insert assistant messages', insertAssistantError)
-      throw insertAssistantError
-    }
-
-    if (needsTitle && title) {
-      // Row already exists (we upserted it earlier); just set the title. The
-      // `.is('title', null)` guard avoids clobbering a title written by a
-      // concurrent request racing on the same thread.
-      const { error: updateTitleError } = await supabase
-        .from('chat_threads')
-        .update({ title, updated_at: new Date().toISOString() })
-        .eq('thread_id', threadId)
-        .eq('user_id', user.id)
-        .is('title', null)
-      if (updateTitleError) {
-        console.warn('Failed to update chat_threads title', updateTitleError)
-      }
-    }
-
     return new Response(
       JSON.stringify({
+        job_id: jobId,
         thread_id: threadId,
         turn_id: turnId,
-        title: title ?? null,
-        replies: assistantRows.map((r) => ({
-          source: r.ws,
-          reply: r.reply,
-          sources: r.sources,
-        })),
+        title: null,
+        status: 'accepted',
       }),
-      { status: 200, headers: jsonHeaders },
+      { status: 202, headers: jsonHeaders },
     )
   } catch (err) {
     console.error('chat-proxy error', err)

@@ -20,6 +20,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 13px;
@@ -31,6 +32,7 @@
   text-align: left;
   font-family: inherit;
   transition: background-color 0.1s;
+  box-sizing: border-box;
 }
 
 .sidebar-nav-link:hover {
@@ -40,6 +42,32 @@
 .sidebar-nav-link-active,
 .sidebar-nav-link-active:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-nav-pending-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-nav-pending-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  animation: sidebar-pending-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes sidebar-pending-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .sidebar-sections {

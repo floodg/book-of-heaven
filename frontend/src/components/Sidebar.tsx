@@ -28,6 +28,18 @@ export function Sidebar({ user }: SidebarProps) {
     [workspace.threads],
   )
 
+  const knownThreadIds = useMemo(
+    () => new Set(workspace.threads.map((t) => t.threadId)),
+    [workspace.threads],
+  )
+  const orphanPendingCount = useMemo(() => {
+    let n = 0
+    for (const tid of workspace.pendingThreadIds) {
+      if (!knownThreadIds.has(tid)) n += 1
+    }
+    return n
+  }, [workspace.pendingThreadIds, knownThreadIds])
+
   const bucketedRecents = useMemo(() => {
     const buckets = new Map<string, typeof workspace.threads>()
     const order: string[] = []
@@ -73,6 +85,15 @@ export function Sidebar({ user }: SidebarProps) {
         >
           <IconPlus size={14} />
           <span>New chat</span>
+          {orphanPendingCount > 0 ? (
+            <span
+              className="sidebar-nav-pending-badge"
+              title={`${orphanPendingCount === 1 ? 'One reply' : `${orphanPendingCount} replies`} generating…`}
+              aria-label="A reply is still generating for a new chat"
+            >
+              <span className="sidebar-nav-pending-dot" />
+            </span>
+          ) : null}
         </NavLink>
         <NavLink
           to="/projects"

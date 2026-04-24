@@ -69,6 +69,9 @@ export interface WorkspaceApi {
   pinThread: (threadId: string) => Promise<boolean>
   unpinThread: (threadId: string) => Promise<boolean>
   deleteThread: (threadId: string) => Promise<boolean>
+
+  /** Thread ids with an LLM job still pending/processing (from `chat_turn_jobs`). */
+  pendingThreadIds: ReadonlySet<string>
 }
 
 const WorkspaceContext = createContext<WorkspaceApi | null>(null)
@@ -196,6 +199,9 @@ export function WorkspaceProvider({
   const [error, setError] = useState<string | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
+  const [pendingThreadIds, setPendingThreadIds] = useState<Set<string>>(
+    () => new Set(),
+  )
 
   // Guard against stale responses overwriting fresh state when refresh() is
   // called back-to-back (e.g. navigation + mutation racing each other).
@@ -258,6 +264,61 @@ export function WorkspaceProvider({
     setLoading(true)
     void refresh()
   }, [refresh])
+
+  const syncPendingChatJobs = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from('chat_turn_jobs')
+      .select('thread_id')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'processing'])
+    if (err) {
+      console.warn('syncPendingChatJobs failed', err)
+      return
+    }
+    const next = new Set<string>()
+    for (const row of data ?? []) {
+      const id = (row as { thread_id: string }).thread_id
+      if (typeof id === 'string' && id.length > 0) next.add(id)
+    }
+    setPendingThreadIds(next)
+  }, [user.id])
+
+  useEffect(() => {
+    void syncPendingChatJobs()
+  }, [syncPendingChatJobs])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chat-turn-jobs-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_turn_jobs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void syncPendingChatJobs()
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_turn_jobs',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void syncPendingChatJobs()
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [user.id, syncPendingChatJobs])
 
   // ───── Project CRUD ─────
 
@@ -503,6 +564,7 @@ export function WorkspaceProvider({
       error,
       projects,
       threads,
+      pendingThreadIds,
       refresh,
       createProject,
       renameProject,
@@ -519,6 +581,7 @@ export function WorkspaceProvider({
       error,
       projects,
       threads,
+      pendingThreadIds,
       refresh,
       createProject,
       renameProject,

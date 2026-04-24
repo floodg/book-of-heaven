@@ -412,3 +412,10 @@ entrypoint = "./functions/chat-proxy/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/chat-proxy/*.html" ]
+
+[functions.chat-job-events]
+enabled = true
+# Token is passed as access_token query param (EventSource cannot set headers).
+verify_jwt = false
+import_map = "./functions/chat-job-events/deno.json"
+entrypoint = "./functions/chat-job-events/index.ts"
