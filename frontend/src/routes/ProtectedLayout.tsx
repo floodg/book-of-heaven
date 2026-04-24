@@ -1,9 +1,11 @@
 import type { Session, User } from '@supabase/supabase-js'
 import { Outlet } from 'react-router-dom'
+import { ChatJobNotifier } from '../components/ChatJobNotifier'
 import { WorkspaceProvider } from '../lib/WorkspaceContext'
 import { YoutubeMapProvider } from '../lib/YoutubeMapContext'
 import { PdfPagesProvider } from '../lib/PdfPagesContext'
 import { Sidebar } from '../components/Sidebar'
+import './ProtectedLayout.css'
 
 interface ProtectedLayoutProps {
   user: User
@@ -29,6 +31,7 @@ export function ProtectedLayout({ user, session }: ProtectedLayoutProps) {
             <div className="app-main">
               <Sidebar user={user} />
               <Outlet context={{ user, session }} />
+              <ChatJobNotifier user={user} session={session} />
             </div>
           </div>
         </PdfPagesProvider>

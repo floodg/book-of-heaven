@@ -21,6 +21,12 @@ export interface ChatPageRouteState {
    *  When omitted, ChatWindow falls back to the user's persisted preference. */
   initialSource?: Source
   projectId?: string
+  /**
+   * Set when opening a thread from the "Response ready" toast. Skips the
+   * "thread not in sidebar list" redirect so we do not immediately bounce
+   * home while `workspace.threads` is still catching up to Realtime.
+   */
+  allowPendingThread?: boolean
 }
 
 export function ChatPage() {
@@ -75,17 +81,26 @@ export function ChatPage() {
   // If the URL points to a thread id that doesn't exist in the workspace
   // (deleted from another tab, bad bookmark, etc.) send the user home rather
   // than leave them staring at a blank pane forever.
+  //
+  // `allowPendingThread` (e.g. from the response-ready toast) skips this check
+  // so we don't race: the sidebar list may not include the thread until the
+  // next `refresh` even though `chat_messages` already has the new reply.
   useEffect(() => {
     if (!threadId) return
     if (workspace.loading) return
+    if (state?.allowPendingThread) return
+    if (state?.initialMessage) return
     const exists = workspace.threads.some((t) => t.threadId === threadId)
-    if (!exists && !state?.initialMessage) {
+    if (!exists) {
       navigate('/', { replace: true })
     }
   }, [threadId, workspace.loading, workspace.threads, navigate, state])
 
   return (
+    // Remount per thread so message list / in-flight job state never leaks across
+    // /c/A → /c/B navigations (same route element, previously reused one instance).
     <ChatWindow
+      key={threadId ?? 'home'}
       user={user}
       session={session}
       threadId={threadId ?? null}

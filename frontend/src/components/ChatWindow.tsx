@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import { Link } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import ReactMarkdown from 'react-markdown'
@@ -62,6 +70,10 @@ interface FreshThreadCacheEntry {
 }
 const freshThreadCache = new Map<string, FreshThreadCacheEntry>()
 const FRESH_THREAD_CACHE_TTL_MS = 10_000
+
+/** Optimistic new-chat state while a job is in flight, so "/ → other thread → /" can restore. */
+const newChatPendingCache = new Map<string, FreshThreadCacheEntry>()
+const NEW_CHAT_PENDING_TTL_MS = 15 * 60 * 1000
 
 // highlightCitations recursively descends into nested children, so we only
 // need to apply it at block level. Applying it at both block and inline
@@ -136,9 +148,9 @@ const BOTH_LAYOUT_OPTIONS: {
     title: 'Show text and narration in two columns',
   },
   {
-    value: 'accordion',
-    label: 'Accordion',
-    title: 'Stack the two replies in expandable sections',
+    value: 'tab',
+    label: 'Tab view',
+    title: 'Switch between sources using a sticky side tab',
   },
 ]
 
@@ -181,6 +193,59 @@ function BothLayoutToggle({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function SplitTurnTabs({
+  assistants,
+  youtubeMap,
+  pdfPages,
+}: {
+  assistants: Message[]
+  youtubeMap: Record<string, string>
+  pdfPages: PdfPagesIndex
+}) {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const safeIdx = activeIdx < assistants.length ? activeIdx : 0
+  const active = assistants[safeIdx]
+  return (
+    <div className="chat-turn-tabs">
+      <div className="chat-tab-strip">
+        {assistants.map((m, i) => {
+          const title =
+            m.source === 'text' || m.source === 'narrated'
+              ? sourceSectionTitle(m.source)
+              : 'Reply'
+          const accentKey = m.source === 'text' ? 'text' : 'narrated'
+          return (
+            <button
+              key={m.id}
+              type="button"
+              className={[
+                'chat-tab-btn',
+                `chat-tab-btn-${accentKey}`,
+                i === safeIdx ? 'chat-tab-btn-active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setActiveIdx(i)}
+              aria-selected={i === safeIdx}
+              role="tab"
+            >
+              {title}
+            </button>
+          )
+        })}
+      </div>
+      <div className="chat-tab-content" role="tabpanel">
+        <AssistantBubble
+          message={active}
+          youtubeMap={youtubeMap}
+          pdfPages={pdfPages}
+          showChip={false}
+        />
+      </div>
     </div>
   )
 }
@@ -337,6 +402,10 @@ export function ChatWindow({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null)
+  const [pendingNewChatThreadId, setPendingNewChatThreadId] = useState<
+    string | null
+  >(null)
   const [source, setSource] = usePreferredSource()
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -353,12 +422,59 @@ export function ChatWindow({
   // message string so navigating to a fresh project detail → submit cycle with
   // a different draft still works.
   const autoSubmittedRef = useRef<string | null>(null)
+  const processedTurnIdsRef = useRef<Set<string>>(new Set())
+  const pendingTurnIdRef = useRef<string | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const onAssistantResponseRef = useRef(onAssistantResponse)
+  onAssistantResponseRef.current = onAssistantResponse
+
+  const closeJobEventSource = () => {
+    eventSourceRef.current?.close()
+    eventSourceRef.current = null
+  }
+
+  useEffect(() => {
+    return () => {
+      closeJobEventSource()
+    }
+  }, [])
+
+  const endInFlightUi = useCallback(() => {
+    setLoading(false)
+    setLoadingThreadId(null)
+    setPendingNewChatThreadId(null)
+  }, [])
+
+  const replyInProgressHere = useMemo(
+    () =>
+      Boolean(
+        loading &&
+          loadingThreadId != null &&
+          (threadId === loadingThreadId ||
+            (threadId === null &&
+              pendingNewChatThreadId != null &&
+              pendingNewChatThreadId === loadingThreadId)),
+      ),
+    [loading, loadingThreadId, threadId, pendingNewChatThreadId],
+  )
 
   useEffect(() => {
     let cancelled = false
 
     if (!threadId) {
-      setMessages([])
+      if (loadingThreadId) {
+        const cached = newChatPendingCache.get(loadingThreadId)
+        if (
+          cached &&
+          Date.now() - cached.ts < NEW_CHAT_PENDING_TTL_MS
+        ) {
+          if (!cancelled) {
+            setMessages(cached.messages)
+          }
+          return
+        }
+      }
+      if (!cancelled) setMessages([])
       return
     }
 
@@ -397,22 +513,112 @@ export function ChatWindow({
     return () => {
       cancelled = true
     }
-  }, [threadId, user.id])
+  }, [threadId, user.id, loadingThreadId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, replyInProgressHere])
+
+  useEffect(() => {
+    if (!threadId) return
+
+    const channel = supabase
+      .channel(`thread-realtime-${user.id}-${threadId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            role?: string
+            thread_id?: string
+            turn_id?: string | null
+          }
+          if (row.role !== 'assistant' || row.thread_id !== threadId) return
+          const tid = row.turn_id
+          if (!tid) return
+          if (tid !== pendingTurnIdRef.current) return
+          if (processedTurnIdsRef.current.has(tid)) return
+
+          void (async () => {
+            if (processedTurnIdsRef.current.has(tid)) return
+            const { data: urow } = await supabase
+              .from('chat_messages')
+              .select('source')
+              .eq('user_id', user.id)
+              .eq('thread_id', threadId)
+              .eq('turn_id', tid)
+              .eq('role', 'user')
+              .limit(1)
+              .maybeSingle()
+            const userSource = urow?.source as
+              | UserSource
+              | undefined
+            const expectAssistants =
+              userSource === 'both' ? 2 : userSource ? 1 : 1
+            const { data, error } = await supabase
+              .from('chat_messages')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('thread_id', threadId)
+              .eq('turn_id', tid)
+              .order('created_at', { ascending: true })
+            if (error) {
+              console.error('Failed to load turn after realtime', error)
+              return
+            }
+            const assistants = (data ?? []).filter(
+              (m) => m.role === 'assistant',
+            ) as Message[]
+            if (assistants.length < expectAssistants) return
+            if (processedTurnIdsRef.current.has(tid)) return
+            processedTurnIdsRef.current.add(tid)
+            pendingTurnIdRef.current = null
+            closeJobEventSource()
+            endInFlightUi()
+            setMessages((prev) => {
+              const rest = prev.filter(
+                (m) => !(m.turn_id === tid && m.role === 'assistant'),
+              )
+              return [...rest, ...assistants]
+            })
+            onAssistantResponseRef.current?.(threadId)
+          })()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [threadId, user.id, endInFlightUi])
 
   const submitMessage = async (
     messageText: string,
     overrideSource?: Source,
   ) => {
+    // One in-flight request at a time (shared refs) — block until it finishes.
     if (!messageText || loading) return
 
     const effectiveSource: Source = overrideSource ?? source
     const isNewThread = !threadId
     const submitThreadId = threadId ?? generateThreadId()
     const submitTurnId = generateThreadId()
+
+    closeJobEventSource()
+    processedTurnIdsRef.current.delete(submitTurnId)
+    pendingTurnIdRef.current = submitTurnId
+
+    setLoadingThreadId(submitThreadId)
+    if (isNewThread) {
+      setPendingNewChatThreadId(submitThreadId)
+    } else {
+      setPendingNewChatThreadId(null)
+    }
 
     const now = new Date().toISOString()
     const userMessage: Message = {
@@ -424,17 +630,19 @@ export function ChatWindow({
       turn_id: submitTurnId,
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages((prev) => {
+      const next = [...prev, userMessage]
+      if (isNewThread) {
+        newChatPendingCache.set(submitThreadId, {
+          messages: next,
+          ts: Date.now(),
+        })
+      }
+      return next
+    })
     setInput('')
     setLoading(true)
 
-    // Always forward project_id when the caller handed us one. We can't use
-    // `isNewThread` as a gate because ProjectDetailPage mints the UUID in
-    // advance (and puts it in the URL) before ChatWindow mounts — so by the
-    // time we get here, threadId is already set and isNewThread is false
-    // even though the chat_threads row doesn't exist server-side yet. The
-    // edge function's upsert uses ignoreDuplicates, so sending project_id
-    // for an already-existing thread is a safe no-op.
     const body: Record<string, unknown> = {
       message: messageText,
       thread_id: submitThreadId,
@@ -443,80 +651,10 @@ export function ChatWindow({
     }
     if (projectId) body.project_id = projectId
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        },
-      )
-
-      if (!res.ok) {
-        // Try to pull the server-provided error message so we can surface
-        // something actionable instead of a generic "something went wrong".
-        let serverError: string | null = null
-        try {
-          const errBody = (await res.clone().json()) as { error?: unknown }
-          if (typeof errBody?.error === 'string' && errBody.error.trim().length > 0) {
-            serverError = errBody.error
-          }
-        } catch {
-          // Non-JSON body or parse failure — fall through to status-based copy.
-        }
-
-        // 401 almost always means the stored JWT is stale (e.g. after a
-        // `supabase db reset` which wipes auth.users). Sign the user out so
-        // onAuthStateChange routes them back to the login screen with a clean
-        // session, instead of letting them spam retries with a dead token.
-        if (res.status === 401) {
-          const errorMessage: Message = {
-            id: `local-${Date.now()}-err`,
-            role: 'assistant',
-            content:
-              'Your session has expired or is no longer valid. Signing you out — please log in again.',
-            created_at: new Date().toISOString(),
-            turn_id: submitTurnId,
-          }
-          setMessages((prev) => [...prev, errorMessage])
-          // Best-effort sign out; ignore errors because the session may already
-          // be invalid server-side.
-          void supabase.auth.signOut().catch((signOutErr) => {
-            console.warn('Sign-out after 401 failed (ignored):', signOutErr)
-          })
-          return
-        }
-
-        const friendly =
-          serverError ??
-          (res.status >= 500
-            ? 'The server hit an unexpected error. Please try again in a moment.'
-            : res.status === 400
-              ? 'The request was rejected. Please refresh the page and try again.'
-              : `Request failed with status ${res.status}.`)
-        const errorMessage: Message = {
-          id: `local-${Date.now()}-err`,
-          role: 'assistant',
-          content: friendly,
-          created_at: new Date().toISOString(),
-          turn_id: submitTurnId,
-        }
-        setMessages((prev) => [...prev, errorMessage])
-        return
-      }
-
-      const payload = (await res.json()) as {
-        replies?: unknown
-      }
-
-      // The edge function returns `replies: [{source, reply, sources}]` — one
-      // entry for single-source turns and two entries (text + narrated) for
-      // 'both'. Be defensive about the shape so a server regression surfaces
-      // as a visible error instead of a silent empty bubble.
+    const applyPayloadToMessages = (payload: {
+      replies?: unknown
+    }): void => {
+      if (processedTurnIdsRef.current.has(submitTurnId)) return
       const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
       const parsedReplies: Array<{
         source: AssistantSource
@@ -565,12 +703,11 @@ export function ChatWindow({
         ]
       }
 
+      processedTurnIdsRef.current.add(submitTurnId)
+      pendingTurnIdRef.current = null
+      newChatPendingCache.delete(submitThreadId)
       setMessages((prev) => {
         const next = [...prev, ...assistantMessages]
-        // For fresh threads, stash the full rendered conversation so the
-        // remounted ChatWindow (after navigating to /c/:id) can seed state
-        // from this snapshot instead of showing an empty pane during the
-        // DB round-trip.
         if (isNewThread) {
           freshThreadCache.set(submitThreadId, {
             messages: next,
@@ -582,22 +719,187 @@ export function ChatWindow({
       if (isNewThread) {
         skipNextFetchForRef.current = submitThreadId
       }
-      onAssistantResponse?.(submitThreadId)
-    } catch (err) {
-      // Network-level failure (CORS, DNS, offline, edge-runtime crash, etc.) —
-      // res.ok handling above covers HTTP-level errors.
-      console.error('Chat request failed (network)', err)
-      const errorMessage: Message = {
-        id: `local-${Date.now()}-err`,
-        role: 'assistant',
-        content:
-          'Could not reach the assistant. Check that the Supabase functions server is running and try again.',
-        created_at: new Date().toISOString(),
-        turn_id: submitTurnId,
+      onAssistantResponseRef.current?.(submitThreadId)
+    }
+
+    let deferLoadingInFinally = false
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        },
+      )
+
+      if (res.status === 409) {
+        pendingTurnIdRef.current = null
+        let errText = 'This turn failed. Send a new message to retry.'
+        try {
+          const b = (await res.json()) as { error?: unknown }
+          if (typeof b?.error === 'string' && b.error.trim()) errText = b.error
+        } catch {
+          // ignore
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-${Date.now()}-err`,
+            role: 'assistant' as const,
+            content: errText,
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          },
+        ])
+        return
       }
-      setMessages((prev) => [...prev, errorMessage])
+
+      if (!res.ok) {
+        let serverError: string | null = null
+        try {
+          const errBody = (await res.clone().json()) as { error?: unknown }
+          if (typeof errBody?.error === 'string' && errBody.error.trim().length > 0) {
+            serverError = errBody.error
+          }
+        } catch {
+          // Non-JSON body or parse failure.
+        }
+
+        if (res.status === 401) {
+          const errorMessage: Message = {
+            id: `local-${Date.now()}-err`,
+            role: 'assistant',
+            content:
+              'Your session has expired or is no longer valid. Signing you out — please log in again.',
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          }
+          setMessages((prev) => [...prev, errorMessage])
+          pendingTurnIdRef.current = null
+          void supabase.auth.signOut().catch((signOutErr) => {
+            console.warn('Sign-out after 401 failed (ignored):', signOutErr)
+          })
+          return
+        }
+
+        const friendly =
+          serverError ??
+          (res.status >= 500
+            ? 'The server hit an unexpected error. Please try again in a moment.'
+            : res.status === 400
+              ? 'The request was rejected. Please refresh the page and try again.'
+              : `Request failed with status ${res.status}.`)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-${Date.now()}-err`,
+            role: 'assistant' as const,
+            content: friendly,
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          },
+        ])
+        pendingTurnIdRef.current = null
+        return
+      }
+
+      if (res.status === 202) {
+        const jobMeta = (await res.json()) as { job_id?: string }
+        const jobId = jobMeta?.job_id
+        if (!jobId) {
+          console.error('202 without job_id')
+          pendingTurnIdRef.current = null
+          return
+        }
+        deferLoadingInFinally = true
+        const esUrl = new URL(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
+        )
+        esUrl.searchParams.set('job_id', jobId)
+        esUrl.searchParams.set('access_token', session.access_token)
+        const es = new EventSource(esUrl.toString())
+        eventSourceRef.current = es
+        es.onmessage = (ev) => {
+          let data: { event?: string; payload?: { replies?: unknown }; error?: string }
+          try {
+            data = JSON.parse(ev.data) as typeof data
+          } catch {
+            return
+          }
+          if (data.event === 'status') return
+          if (data.event === 'timeout') {
+            es.close()
+            if (eventSourceRef.current === es) eventSourceRef.current = null
+            return
+          }
+          if (data.event === 'error') {
+            es.close()
+            if (eventSourceRef.current === es) eventSourceRef.current = null
+            if (processedTurnIdsRef.current.has(submitTurnId)) return
+            const msg =
+              data.error ?? 'The assistant could not complete this turn.'
+            processedTurnIdsRef.current.add(submitTurnId)
+            pendingTurnIdRef.current = null
+            newChatPendingCache.delete(submitThreadId)
+            endInFlightUi()
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `local-${Date.now()}-sse-err`,
+                role: 'assistant' as const,
+                content: msg,
+                created_at: new Date().toISOString(),
+                turn_id: submitTurnId,
+              },
+            ])
+            return
+          }
+          if (data.event === 'complete' && data.payload) {
+            es.close()
+            if (eventSourceRef.current === es) eventSourceRef.current = null
+            if (processedTurnIdsRef.current.has(submitTurnId)) return
+            applyPayloadToMessages(data.payload)
+            endInFlightUi()
+          }
+        }
+        es.onerror = () => {
+          es.close()
+          if (eventSourceRef.current === es) eventSourceRef.current = null
+          // Realtime on this thread will still deliver assistant rows; keep
+          // loading true until that fires or the user navigates.
+        }
+        return
+      }
+
+      const payload = (await res.json()) as { replies?: unknown }
+      if (processedTurnIdsRef.current.has(submitTurnId)) {
+        pendingTurnIdRef.current = null
+        return
+      }
+      applyPayloadToMessages(payload)
+    } catch (err) {
+      console.error('Chat request failed (network)', err)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}-err`,
+          role: 'assistant' as const,
+          content:
+            'Could not reach the assistant. Check that the Supabase functions server is running and try again.',
+          created_at: new Date().toISOString(),
+          turn_id: submitTurnId,
+        },
+      ])
+      pendingTurnIdRef.current = null
     } finally {
-      setLoading(false)
+      if (!deferLoadingInFinally) {
+        endInFlightUi()
+      }
     }
   }
 
@@ -623,12 +925,16 @@ export function ChatWindow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessage])
 
-  // "Empty landing" layout: no messages yet, not currently loading a reply,
-  // and not mid-auto-submit from ProjectDetailPage. In that state the input
-  // lives centered under a greeting; the moment the first exchange starts
-  // we fall through to the normal layout with the bar pinned at the bottom.
+  // "Empty landing" layout: no messages yet, not currently loading a reply
+  // for *this* view, and not mid-auto-submit from ProjectDetailPage. In that
+  // state the input lives centered under a greeting; the moment the first
+  // exchange starts we fall through to the normal layout with the bar pinned
+  // at the bottom.
   const isEmpty =
-    messages.length === 0 && !loading && !initialMessage && !threadId
+    messages.length === 0 &&
+    !replyInProgressHere &&
+    !initialMessage &&
+    !threadId
 
   const hasSplitTurns = useMemo(
     () => groupIntoTurns(messages).some((t) => t.assistants.length > 1),
@@ -639,30 +945,34 @@ export function ChatWindow({
   const inputBar = (
     <form className="chat-input-bar" onSubmit={handleSubmit}>
       <div className="chat-input-bar-inner">
-        <input
-          type="text"
-          className="chat-input"
-          placeholder="Ask about the Book of Heaven..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
-          autoFocus
-        />
-        <SourceToggle value={source} onChange={setSource} disabled={loading} />
-        {showBothLayoutToggle ? (
-          <BothLayoutToggle
-            value={bothReplyLayout}
-            onChange={setBothReplyLayout}
+        <div className="chat-input-bar-row">
+          <input
+            type="text"
+            className="chat-input"
+            placeholder="Ask about the Book of Heaven..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             disabled={loading}
+            autoFocus
           />
-        ) : null}
-        <button
-          type="submit"
-          className="chat-send"
-          disabled={loading || input.trim().length === 0}
-        >
-          Send
-        </button>
+          <button
+            type="submit"
+            className="chat-send"
+            disabled={loading || input.trim().length === 0}
+          >
+            Send
+          </button>
+        </div>
+        <div className="chat-input-bar-toggles">
+          <SourceToggle value={source} onChange={setSource} disabled={loading} />
+          {showBothLayoutToggle ? (
+            <BothLayoutToggle
+              value={bothReplyLayout}
+              onChange={setBothReplyLayout}
+              disabled={loading}
+            />
+          ) : null}
+        </div>
       </div>
     </form>
   )
@@ -732,56 +1042,18 @@ export function ChatWindow({
             const split = turn.assistants.length > 1
 
             if (split) {
-              if (bothReplyLayout === 'accordion') {
+              if (bothReplyLayout === 'tab') {
                 return (
                   <div
                     key={turn.key}
                     className="chat-turn chat-turn-split-wrap"
                   >
                     {userBubble}
-                    <div className="chat-turn-accordion">
-                      {turn.assistants.map((m, index) => {
-                        const title =
-                          m.source === 'text' || m.source === 'narrated'
-                            ? sourceSectionTitle(m.source)
-                            : 'Reply'
-                        const accentClass =
-                          m.source === 'text'
-                            ? 'text'
-                            : m.source === 'narrated'
-                              ? 'narrated'
-                              : 'default'
-                        return (
-                          <details
-                            key={m.id}
-                            className="chat-accordion-item"
-                            defaultOpen={index === 0}
-                          >
-                            <summary
-                              className={`chat-accordion-summary chat-accordion-summary-${accentClass}`}
-                            >
-                              <span className="chat-accordion-summary-text">
-                                {title}
-                              </span>
-                              <span
-                                className="chat-accordion-chevron"
-                                aria-hidden
-                              />
-                            </summary>
-                            <div className="chat-accordion-body">
-                              <div className="chat-bubble-row chat-bubble-row-assistant">
-                                <AssistantBubble
-                                  message={m}
-                                  youtubeMap={youtubeMap}
-                                  pdfPages={pdfPages}
-                                  showChip={false}
-                                />
-                              </div>
-                            </div>
-                          </details>
-                        )
-                      })}
-                    </div>
+                    <SplitTurnTabs
+                      assistants={turn.assistants}
+                      youtubeMap={youtubeMap}
+                      pdfPages={pdfPages}
+                    />
                   </div>
                 )
               }
@@ -807,6 +1079,42 @@ export function ChatWindow({
               )
             }
 
+            // When tab layout is active and this is a single-source reply,
+            // wrap it in the same chat-turn-tabs shell so the content column
+            // stays aligned with split-source tab turns above/below it.
+            if (bothReplyLayout === 'tab' && turn.assistants.length === 1) {
+              const m = turn.assistants[0]
+              const src =
+                m.source === 'text' || m.source === 'narrated'
+                  ? m.source
+                  : null
+              if (src) {
+                return (
+                  <div key={turn.key} className="chat-turn">
+                    {userBubble}
+                    <div className="chat-turn-tabs">
+                      <div className="chat-tab-strip">
+                        <span
+                          className={`chat-tab-btn chat-tab-btn-${src} chat-tab-btn-active chat-tab-btn-solo`}
+                          aria-label={sourceSectionTitle(src)}
+                        >
+                          {sourceSectionTitle(src)}
+                        </span>
+                      </div>
+                      <div className="chat-tab-content">
+                        <AssistantBubble
+                          message={m}
+                          youtubeMap={youtubeMap}
+                          pdfPages={pdfPages}
+                          showChip={false}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+            }
+
             return (
               <div key={turn.key} className="chat-turn">
                 {userBubble}
@@ -829,7 +1137,7 @@ export function ChatWindow({
             )
           })}
 
-          {loading && (
+          {replyInProgressHere && (
             <div className="chat-bubble-row chat-bubble-row-assistant">
               <div className="chat-bubble chat-bubble-assistant">
                 <span className="chat-typing" aria-label="Assistant is typing">
