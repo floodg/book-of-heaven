@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   useLocation,
   useNavigate,
@@ -27,6 +27,12 @@ export interface ChatPageRouteState {
    * home while `workspace.threads` is still catching up to Realtime.
    */
   allowPendingThread?: boolean
+  /** After HTTP 202 on `/`, parent navigates here so SSE can reconnect on the remounted view. */
+  resumeChatJob?: {
+    jobId: string
+    turnId: string
+    threadId: string
+  }
 }
 
 export function ChatPage() {
@@ -69,6 +75,8 @@ export function ChatPage() {
   // don't, the not-found guard effect below can race us: it sees the new
   // thread id in the URL, state already nulled out, and the workspace array
   // still missing the thread, so it redirects home before the refresh lands.
+  // Refresh sidebar/titles. Navigate to `/c/:id` only when still on `/` (early
+  // navigation from `onThreadAccepted` means `threadId` is already set here).
   const handleAssistantResponse = async (newThreadId: string) => {
     await workspace.refresh()
     if (!threadId) {
@@ -77,6 +85,34 @@ export function ChatPage() {
       navigate(location.pathname, { replace: true, state: null })
     }
   }
+
+  const handleThreadAccepted = useCallback(
+    async (
+      newThreadId: string,
+      resume: { jobId: string; turnId: string } | null,
+    ) => {
+      await workspace.refresh()
+      if (resume) {
+        navigate(`/c/${newThreadId}`, {
+          replace: true,
+          state: {
+            resumeChatJob: {
+              jobId: resume.jobId,
+              turnId: resume.turnId,
+              threadId: newThreadId,
+            },
+          },
+        })
+      } else {
+        navigate(`/c/${newThreadId}`, { replace: true, state: null })
+      }
+    },
+    [navigate, workspace],
+  )
+
+  const clearResumeChatJob = useCallback(() => {
+    navigate(location.pathname, { replace: true, state: null })
+  }, [navigate, location.pathname])
 
   // If the URL points to a thread id that doesn't exist in the workspace
   // (deleted from another tab, bad bookmark, etc.) send the user home rather
@@ -89,6 +125,7 @@ export function ChatPage() {
     if (!threadId) return
     if (workspace.loading) return
     if (state?.allowPendingThread) return
+    if (state?.resumeChatJob?.threadId === threadId) return
     if (state?.initialMessage) return
     const exists = workspace.threads.some((t) => t.threadId === threadId)
     if (!exists) {
@@ -109,6 +146,9 @@ export function ChatPage() {
       initialSource={state?.initialSource ?? null}
       breadcrumb={breadcrumb}
       onAssistantResponse={handleAssistantResponse}
+      onThreadAccepted={handleThreadAccepted}
+      resumeChatJob={state?.resumeChatJob ?? null}
+      onClearResumeChatJob={clearResumeChatJob}
     />
   )
 }

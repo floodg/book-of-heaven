@@ -1,0 +1,32 @@
+.model-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-selector-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a2e18;
+}
+
+.model-selector-select {
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1c0a00;
+  font-size: 12px;
+  font-weight: 500;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.model-selector-select:focus {
+  outline: 2px solid rgba(146, 64, 14, 0.25);
+  outline-offset: 1px;
+}
+
+.model-selector-select:disabled {
+  color: #9a8a75;
+  background: #f4eee3;
+}
