@@ -20,10 +20,16 @@ import { useYoutubeMap } from '../lib/YoutubeMapContext'
 import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import { SourceToggle } from './SourceToggle'
 import {
+  CHAT_MODELS,
+  DEFAULT_MODEL_SENTINEL,
+  ModelSelector,
+} from './ModelSelector'
+import {
   useBothReplyLayout,
   type BothReplyLayout,
 } from '../lib/bothReplyLayout'
 import { usePreferredSource, type Source } from '../lib/source'
+import { useWorkspace } from '../lib/WorkspaceContext'
 import './ChatWindow.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
@@ -70,6 +76,8 @@ interface FreshThreadCacheEntry {
 }
 const freshThreadCache = new Map<string, FreshThreadCacheEntry>()
 const FRESH_THREAD_CACHE_TTL_MS = 10_000
+const MODEL_STORAGE_KEY = 'boh.model'
+const CHAT_MODEL_VALUES = new Set(CHAT_MODELS.map((m) => m.value))
 
 /** Optimistic new-chat state while a job is in flight, so "/ → other thread → /" can restore. */
 const newChatPendingCache = new Map<string, FreshThreadCacheEntry>()
@@ -387,6 +395,19 @@ interface ChatWindowProps {
     threadTitle?: string | null
   } | null
   onAssistantResponse?: (threadId: string) => void
+  /** After HTTP 202 on `/`, refresh workspace and navigate to `/c/:id` with optional SSE resume state. */
+  onThreadAccepted?: (
+    threadId: string,
+    resume: { jobId: string; turnId: string } | null,
+  ) => void | Promise<void>
+  /** When set, reconnect to `chat-job-events` for an in-flight turn after early navigation from `/`. */
+  resumeChatJob?: {
+    jobId: string
+    turnId: string
+    threadId: string
+  } | null
+  /** Strip `resumeChatJob` from route state after terminal SSE or error. */
+  onClearResumeChatJob?: () => void
 }
 
 export function ChatWindow({
@@ -398,7 +419,11 @@ export function ChatWindow({
   initialSource,
   breadcrumb,
   onAssistantResponse,
+  onThreadAccepted,
+  resumeChatJob,
+  onClearResumeChatJob,
 }: ChatWindowProps) {
+  const { threads } = useWorkspace()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -408,6 +433,15 @@ export function ChatWindow({
   >(null)
   const [source, setSource] = usePreferredSource()
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(MODEL_STORAGE_KEY)
+      if (stored && CHAT_MODEL_VALUES.has(stored)) return stored
+    } catch {
+      // localStorage may be unavailable in hardened browsers.
+    }
+    return DEFAULT_MODEL_SENTINEL
+  })
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const youtubeMap = useYoutubeMap()
   const pdfPages = usePdfPages()
@@ -427,11 +461,61 @@ export function ChatWindow({
   const eventSourceRef = useRef<EventSource | null>(null)
   const onAssistantResponseRef = useRef(onAssistantResponse)
   onAssistantResponseRef.current = onAssistantResponse
+  const activeThreadModel =
+    threadId == null
+      ? null
+      : (threads.find((t) => t.threadId === threadId)?.model ?? null)
 
   const closeJobEventSource = () => {
     eventSourceRef.current?.close()
     eventSourceRef.current = null
   }
+
+  useEffect(() => {
+    const fallback = (() => {
+      try {
+        const stored = localStorage.getItem(MODEL_STORAGE_KEY)
+        if (stored && CHAT_MODEL_VALUES.has(stored)) return stored
+      } catch {
+        // Ignore localStorage failures and use default.
+      }
+      return DEFAULT_MODEL_SENTINEL
+    })()
+    if (threadId == null) {
+      setSelectedModel(fallback)
+      return
+    }
+    const threadModel =
+      activeThreadModel && CHAT_MODEL_VALUES.has(activeThreadModel)
+        ? activeThreadModel
+        : fallback
+    setSelectedModel(threadModel)
+  }, [threadId, activeThreadModel])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MODEL_STORAGE_KEY, selectedModel)
+    } catch {
+      // Ignore write failures in private mode.
+    }
+  }, [selectedModel])
+
+  const handleModelChange = useCallback(
+    (model: string) => {
+      if (!CHAT_MODEL_VALUES.has(model)) return
+      setSelectedModel(model)
+      if (!threadId) return
+      void supabase
+        .from('chat_threads')
+        .update({
+          model,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('thread_id', threadId)
+        .eq('user_id', user.id)
+    },
+    [threadId, user.id],
+  )
 
   useEffect(() => {
     return () => {
@@ -444,6 +528,167 @@ export function ChatWindow({
     setLoadingThreadId(null)
     setPendingNewChatThreadId(null)
   }, [])
+
+  const applyJobPayload = useCallback(
+    (
+      submitTurnId: string,
+      submitThreadId: string,
+      isNewThread: boolean,
+      payload: { replies?: unknown },
+    ) => {
+      if (processedTurnIdsRef.current.has(submitTurnId)) return
+      const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
+      const parsedReplies: Array<{
+        source: AssistantSource
+        reply: string
+        sources: AnythingLlmSource[] | null
+      }> = []
+      for (const r of rawReplies) {
+        if (!r || typeof r !== 'object') continue
+        const rec = r as Record<string, unknown>
+        const s = rec.source
+        if (s !== 'text' && s !== 'narrated') continue
+        const replyRaw = rec.reply
+        const replyText =
+          typeof replyRaw === 'string'
+            ? replyRaw
+            : replyRaw == null
+              ? '(The assistant returned an empty response.)'
+              : `(Unexpected response shape)\n\n${JSON.stringify(replyRaw, null, 2)}`
+        const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
+          ? (rec.sources as AnythingLlmSource[])
+          : null
+        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal })
+      }
+
+      let assistantMessages: Message[]
+      if (parsedReplies.length > 0) {
+        const tsBase = Date.now()
+        assistantMessages = parsedReplies.map((r, i) => ({
+          id: `local-${tsBase}-a-${i}`,
+          role: 'assistant' as const,
+          content: r.reply,
+          created_at: new Date(tsBase + i).toISOString(),
+          sources: r.sources,
+          source: r.source,
+          turn_id: submitTurnId,
+        }))
+      } else {
+        assistantMessages = [
+          {
+            id: `local-${Date.now()}-a-empty`,
+            role: 'assistant',
+            content: '(The assistant returned an empty response.)',
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          },
+        ]
+      }
+
+      processedTurnIdsRef.current.add(submitTurnId)
+      pendingTurnIdRef.current = null
+      newChatPendingCache.delete(submitThreadId)
+      setMessages((prev) => {
+        const next = [...prev, ...assistantMessages]
+        if (isNewThread) {
+          freshThreadCache.set(submitThreadId, {
+            messages: next,
+            ts: Date.now(),
+          })
+        }
+        return next
+      })
+      if (isNewThread) {
+        skipNextFetchForRef.current = submitThreadId
+      }
+      onAssistantResponseRef.current?.(submitThreadId)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!resumeChatJob || !threadId) return
+    if (resumeChatJob.threadId !== threadId) return
+
+    pendingTurnIdRef.current = resumeChatJob.turnId
+    setLoading(true)
+    setLoadingThreadId(threadId)
+
+    const submitTurnId = resumeChatJob.turnId
+    const submitThreadId = resumeChatJob.threadId
+    const isNewThread = true
+
+    const esUrl = new URL(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
+    )
+    esUrl.searchParams.set('job_id', resumeChatJob.jobId)
+    esUrl.searchParams.set('access_token', session.access_token)
+    const es = new EventSource(esUrl.toString())
+    eventSourceRef.current = es
+
+    es.onmessage = (ev) => {
+      let data: { event?: string; payload?: { replies?: unknown }; error?: string }
+      try {
+        data = JSON.parse(ev.data) as typeof data
+      } catch {
+        return
+      }
+      if (data.event === 'status') return
+      if (data.event === 'timeout') {
+        es.close()
+        if (eventSourceRef.current === es) eventSourceRef.current = null
+        onClearResumeChatJob?.()
+        endInFlightUi()
+        return
+      }
+      if (data.event === 'error') {
+        es.close()
+        if (eventSourceRef.current === es) eventSourceRef.current = null
+        if (processedTurnIdsRef.current.has(submitTurnId)) return
+        const msg =
+          data.error ?? 'The assistant could not complete this turn.'
+        processedTurnIdsRef.current.add(submitTurnId)
+        pendingTurnIdRef.current = null
+        newChatPendingCache.delete(submitThreadId)
+        endInFlightUi()
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-${Date.now()}-sse-err-resume`,
+            role: 'assistant' as const,
+            content: msg,
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          },
+        ])
+        onClearResumeChatJob?.()
+        return
+      }
+      if (data.event === 'complete' && data.payload) {
+        es.close()
+        if (eventSourceRef.current === es) eventSourceRef.current = null
+        if (processedTurnIdsRef.current.has(submitTurnId)) return
+        applyJobPayload(submitTurnId, submitThreadId, isNewThread, data.payload)
+        endInFlightUi()
+      }
+    }
+    es.onerror = () => {
+      es.close()
+      if (eventSourceRef.current === es) eventSourceRef.current = null
+    }
+
+    return () => {
+      es.close()
+      if (eventSourceRef.current === es) eventSourceRef.current = null
+    }
+  }, [
+    resumeChatJob,
+    threadId,
+    session.access_token,
+    applyJobPayload,
+    endInFlightUi,
+    onClearResumeChatJob,
+  ])
 
   const replyInProgressHere = useMemo(
     () =>
@@ -648,79 +893,9 @@ export function ChatWindow({
       thread_id: submitThreadId,
       turn_id: submitTurnId,
       source: effectiveSource,
+      model: selectedModel,
     }
     if (projectId) body.project_id = projectId
-
-    const applyPayloadToMessages = (payload: {
-      replies?: unknown
-    }): void => {
-      if (processedTurnIdsRef.current.has(submitTurnId)) return
-      const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
-      const parsedReplies: Array<{
-        source: AssistantSource
-        reply: string
-        sources: AnythingLlmSource[] | null
-      }> = []
-      for (const r of rawReplies) {
-        if (!r || typeof r !== 'object') continue
-        const rec = r as Record<string, unknown>
-        const s = rec.source
-        if (s !== 'text' && s !== 'narrated') continue
-        const replyRaw = rec.reply
-        const replyText =
-          typeof replyRaw === 'string'
-            ? replyRaw
-            : replyRaw == null
-              ? '(The assistant returned an empty response.)'
-              : `(Unexpected response shape)\n\n${JSON.stringify(replyRaw, null, 2)}`
-        const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
-          ? (rec.sources as AnythingLlmSource[])
-          : null
-        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal })
-      }
-
-      let assistantMessages: Message[]
-      if (parsedReplies.length > 0) {
-        const tsBase = Date.now()
-        assistantMessages = parsedReplies.map((r, i) => ({
-          id: `local-${tsBase}-a-${i}`,
-          role: 'assistant' as const,
-          content: r.reply,
-          created_at: new Date(tsBase + i).toISOString(),
-          sources: r.sources,
-          source: r.source,
-          turn_id: submitTurnId,
-        }))
-      } else {
-        assistantMessages = [
-          {
-            id: `local-${Date.now()}-a-empty`,
-            role: 'assistant',
-            content: '(The assistant returned an empty response.)',
-            created_at: new Date().toISOString(),
-            turn_id: submitTurnId,
-          },
-        ]
-      }
-
-      processedTurnIdsRef.current.add(submitTurnId)
-      pendingTurnIdRef.current = null
-      newChatPendingCache.delete(submitThreadId)
-      setMessages((prev) => {
-        const next = [...prev, ...assistantMessages]
-        if (isNewThread) {
-          freshThreadCache.set(submitThreadId, {
-            messages: next,
-            ts: Date.now(),
-          })
-        }
-        return next
-      })
-      if (isNewThread) {
-        skipNextFetchForRef.current = submitThreadId
-      }
-      onAssistantResponseRef.current?.(submitThreadId)
-    }
 
     let deferLoadingInFinally = false
 
@@ -816,6 +991,11 @@ export function ChatWindow({
           pendingTurnIdRef.current = null
           return
         }
+        if (isNewThread && onThreadAccepted) {
+          deferLoadingInFinally = true
+          await onThreadAccepted(submitThreadId, { jobId, turnId: submitTurnId })
+          return
+        }
         deferLoadingInFinally = true
         const esUrl = new URL(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
@@ -863,7 +1043,12 @@ export function ChatWindow({
             es.close()
             if (eventSourceRef.current === es) eventSourceRef.current = null
             if (processedTurnIdsRef.current.has(submitTurnId)) return
-            applyPayloadToMessages(data.payload)
+            applyJobPayload(
+              submitTurnId,
+              submitThreadId,
+              isNewThread,
+              data.payload,
+            )
             endInFlightUi()
           }
         }
@@ -881,7 +1066,11 @@ export function ChatWindow({
         pendingTurnIdRef.current = null
         return
       }
-      applyPayloadToMessages(payload)
+      if (isNewThread && onThreadAccepted) {
+        await onThreadAccepted(submitThreadId, null)
+        return
+      }
+      applyJobPayload(submitTurnId, submitThreadId, isNewThread, payload)
     } catch (err) {
       console.error('Chat request failed (network)', err)
       setMessages((prev) => [
@@ -965,6 +1154,11 @@ export function ChatWindow({
         </div>
         <div className="chat-input-bar-toggles">
           <SourceToggle value={source} onChange={setSource} disabled={loading} />
+          <ModelSelector
+            value={selectedModel}
+            onChange={handleModelChange}
+            disabled={loading}
+          />
           {showBothLayoutToggle ? (
             <BothLayoutToggle
               value={bothReplyLayout}

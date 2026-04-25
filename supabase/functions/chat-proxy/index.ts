@@ -19,6 +19,18 @@ const jsonHeaders = {
 
 type Source = 'text' | 'narrated' | 'both'
 type AssistantSource = 'text' | 'narrated'
+type ChatModel =
+  | 'workspace-default'
+  | 'claude-sonnet-4-6'
+const DEFAULT_MODEL_SENTINEL: ChatModel = 'workspace-default'
+const ALLOWED_CHAT_MODELS = new Set<ChatModel>([
+  DEFAULT_MODEL_SENTINEL,
+  'claude-sonnet-4-6',
+])
+
+function isChatModel(value: unknown): value is ChatModel {
+  return typeof value === 'string' && ALLOWED_CHAT_MODELS.has(value as ChatModel)
+}
 
 function workspaceSlugFor(source: AssistantSource): string {
   if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
@@ -38,7 +50,7 @@ export interface AnythingLlmSource {
 async function anythingLlmChat(
   message: string,
   workspaceSlug: string,
-  options?: { sessionId?: string; mode?: 'chat' | 'query' },
+  options?: { sessionId?: string; mode?: 'chat' | 'query'; chatModel?: string | null },
 ): Promise<{
   text: string
   error: string | null
@@ -49,6 +61,7 @@ async function anythingLlmChat(
   const mode = options?.mode ?? 'query'
   const body: Record<string, unknown> = { message, mode }
   if (options?.sessionId) body.sessionId = options.sessionId
+  if (options?.chatModel) body.chatModel = options.chatModel
 
   const response = await fetch(
     `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
@@ -207,10 +220,11 @@ async function runChatTurn(
     threadId: string
     turnId: string
     source: Source
+    model: ChatModel
     incomingProjectId: string | null
   },
 ): Promise<void> {
-  const { userId, jobId, message, threadId, turnId, source, incomingProjectId } = ctx
+  const { userId, jobId, message, threadId, turnId, source, model, incomingProjectId } = ctx
   const nowIso = new Date().toISOString()
   const { error: markProcErr } = await supabase
     .from('chat_turn_jobs')
@@ -225,6 +239,7 @@ async function runChatTurn(
     const upsertPayload: Record<string, unknown> = {
       thread_id: threadId,
       user_id: userId,
+      model,
     }
     if (incomingProjectId) upsertPayload.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -290,6 +305,7 @@ async function runChatTurn(
         const result = await anythingLlmChat(composedMessage, slug, {
           sessionId: threadId,
           mode: 'query',
+          chatModel: model === DEFAULT_MODEL_SENTINEL ? null : model,
         })
         return { ws, slug, result }
       }),
@@ -438,6 +454,7 @@ serve(async (req) => {
       thread_id?: unknown
       project_id?: unknown
       source?: unknown
+      model?: unknown
       turn_id?: unknown
     }
     try {
@@ -491,6 +508,18 @@ serve(async (req) => {
       )
     }
     const source: Source = sourceRaw
+
+    const modelRaw = body?.model
+    if (!isChatModel(modelRaw)) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Missing or invalid model (expected 'workspace-default' or an allowed model id)",
+        }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+    const model: ChatModel = modelRaw
 
     const projectIdRaw = body?.project_id
     let incomingProjectId: string | null = null
@@ -595,6 +624,7 @@ serve(async (req) => {
     const upsertPayload2: Record<string, unknown> = {
       thread_id: threadId,
       user_id: user.id,
+      model,
     }
     if (incomingProjectId) upsertPayload2.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -602,6 +632,15 @@ serve(async (req) => {
       .upsert(upsertPayload2, { onConflict: 'thread_id', ignoreDuplicates: true })
     if (ensureThreadError) {
       console.warn('Failed to upsert chat_threads row', ensureThreadError)
+    }
+
+    const { error: ensureThreadModelError } = await supabase
+      .from('chat_threads')
+      .update({ model, updated_at: new Date().toISOString() })
+      .eq('thread_id', threadId)
+      .eq('user_id', user.id)
+    if (ensureThreadModelError) {
+      console.warn('Failed to persist chat model on thread', ensureThreadModelError)
     }
 
     const { data: threadRowPj, error: threadPjErr } = await supabase
@@ -671,6 +710,7 @@ serve(async (req) => {
         threadId,
         turnId,
         source,
+        model,
         incomingProjectId,
       }),
     )
