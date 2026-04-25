@@ -415,6 +415,34 @@
   width: 100%;
 }
 
+.volume-filter-select {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: #4a2e18;
+  background: #fffdf8;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  min-width: 110px;
+}
+
+.volume-filter-select:hover:not(:disabled) {
+  border-color: #c4873a;
+}
+
+.volume-filter-select:focus {
+  outline: none;
+  border-color: #92400e;
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.12);
+}
+
+.volume-filter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chat-input {
   flex: 1;
   padding: 11px 14px;

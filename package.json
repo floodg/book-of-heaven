@@ -6,9 +6,12 @@
   "type": "module",
   "scripts": {
     "build-pdf-pages": "node scripts/build-pdf-page-index.mjs",
-    "build-youtube-map": "node scripts/build-youtube-map.mjs"
+    "build-youtube-map": "node scripts/build-youtube-map.mjs",
+    "ingest:narrated": "node scripts/ingest-corpus.mjs --workspace narrated",
+    "ingest:text": "node scripts/ingest-corpus.mjs --workspace text"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.104.1",
     "pdfjs-dist": "^4.10.38"
   }
 }

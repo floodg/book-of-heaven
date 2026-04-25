@@ -11,6 +11,8 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+const RAG_ENABLED = import.meta.env.VITE_USE_PGVECTOR_RAG === 'true'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,47 +215,90 @@ export function WorkspaceProvider({
     const fetchId = ++fetchIdRef.current
     setError(null)
     try {
-      const [messagesRes, threadsRes, projectsRes] = await Promise.all([
-        supabase
-          .from('chat_messages')
-          .select('thread_id, role, content, created_at')
-          .eq('user_id', user.id),
-        supabase
-          .from('chat_threads')
-          .select('thread_id, title, project_id, pinned_at, created_at, updated_at')
-          .eq('user_id', user.id),
-        supabase
-          .from('chat_projects')
-          .select('id, name, description, instructions, created_at, updated_at')
-          .eq('user_id', user.id),
-      ])
-      if (fetchIdRef.current !== fetchId) return
+      let rawMessages: RawMessage[]
+      let rawThreads: RawThread[]
+      let rawProjects: RawProject[]
 
-      if (messagesRes.error) throw messagesRes.error
-      if (threadsRes.error) throw threadsRes.error
-      if (projectsRes.error) throw projectsRes.error
+      if (RAG_ENABLED) {
+        const [messagesRes, threadsRes] = await Promise.all([
+          supabase
+            .from('research_messages')
+            .select('thread_id, role, content, created_at')
+            .eq('user_id', user.id),
+          supabase
+            .from('research_threads')
+            .select('id, title, created_at, updated_at')
+            .eq('user_id', user.id),
+        ])
+        if (fetchIdRef.current !== fetchId) return
+        if (messagesRes.error) throw messagesRes.error
+        if (threadsRes.error) throw threadsRes.error
 
-      const rawMessages = (messagesRes.data ?? []) as RawMessage[]
-      const rawThreads = (threadsRes.data ?? []) as RawThread[]
-      const rawProjects = (projectsRes.data ?? []) as RawProject[]
+        rawMessages = (messagesRes.data ?? []) as RawMessage[]
+        rawThreads = ((threadsRes.data ?? []) as { id: string; title: string | null; created_at: string | null; updated_at: string | null }[]).map(
+          (t) => ({ thread_id: t.id, title: t.title, project_id: null, pinned_at: null, created_at: t.created_at, updated_at: t.updated_at }),
+        )
+        rawProjects = []
+      } else {
+        const [messagesRes, threadsRes, projectsRes] = await Promise.all([
+          supabase
+            .from('chat_messages')
+            .select('thread_id, role, content, created_at')
+            .eq('user_id', user.id),
+          supabase
+            .from('chat_threads')
+            .select('thread_id, title, project_id, pinned_at, created_at, updated_at')
+            .eq('user_id', user.id),
+          supabase
+            .from('chat_projects')
+            .select('id, name, description, instructions, created_at, updated_at')
+            .eq('user_id', user.id),
+        ])
+        if (fetchIdRef.current !== fetchId) return
+        if (messagesRes.error) throw messagesRes.error
+        if (threadsRes.error) throw threadsRes.error
+        if (projectsRes.error) throw projectsRes.error
+
+        rawMessages = (messagesRes.data ?? []) as RawMessage[]
+        rawThreads = (threadsRes.data ?? []) as RawThread[]
+        rawProjects = (projectsRes.data ?? []) as RawProject[]
+      }
 
       let mergedThreads = assembleThreads(rawMessages, rawThreads)
-      const modelsRes = await supabase
-        .from('chat_threads')
-        .select('thread_id, model')
-        .eq('user_id', user.id)
-      if (!modelsRes.error && modelsRes.data?.length) {
-        const modelByThreadId = new Map<string, string | null>()
-        for (const row of modelsRes.data as {
-          thread_id: string
-          model: string | null
-        }[]) {
-          modelByThreadId.set(row.thread_id, row.model ?? null)
+
+      if (RAG_ENABLED) {
+        const modelsRes = await supabase
+          .from('research_threads')
+          .select('id, selected_model')
+          .eq('user_id', user.id)
+        if (!modelsRes.error && modelsRes.data?.length) {
+          const modelByThreadId = new Map<string, string | null>()
+          for (const row of modelsRes.data as { id: string; selected_model: string | null }[]) {
+            modelByThreadId.set(row.id, row.selected_model ?? null)
+          }
+          mergedThreads = mergedThreads.map((t) => ({
+            ...t,
+            model: modelByThreadId.get(t.threadId) ?? t.model ?? null,
+          }))
         }
-        mergedThreads = mergedThreads.map((t) => ({
-          ...t,
-          model: modelByThreadId.get(t.threadId) ?? t.model ?? null,
-        }))
+      } else {
+        const modelsRes = await supabase
+          .from('chat_threads')
+          .select('thread_id, model')
+          .eq('user_id', user.id)
+        if (!modelsRes.error && modelsRes.data?.length) {
+          const modelByThreadId = new Map<string, string | null>()
+          for (const row of modelsRes.data as {
+            thread_id: string
+            model: string | null
+          }[]) {
+            modelByThreadId.set(row.thread_id, row.model ?? null)
+          }
+          mergedThreads = mergedThreads.map((t) => ({
+            ...t,
+            model: modelByThreadId.get(t.threadId) ?? t.model ?? null,
+          }))
+        }
       }
       if (fetchIdRef.current !== fetchId) return
 
@@ -558,21 +603,34 @@ export function WorkspaceProvider({
 
   const deleteThread = useCallback<WorkspaceApi['deleteThread']>(
     async (threadId) => {
-      const [msgRes, trRes] = await Promise.all([
-        supabase
-          .from('chat_messages')
+      if (RAG_ENABLED) {
+        // research_messages cascade-deletes with the thread; delete thread row by `id`
+        const { error: trErr } = await supabase
+          .from('research_threads')
           .delete()
           .eq('user_id', user.id)
-          .eq('thread_id', threadId),
-        supabase
-          .from('chat_threads')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('thread_id', threadId),
-      ])
-      if (msgRes.error || trRes.error) {
-        console.error('deleteThread failed', msgRes.error ?? trRes.error)
-        return false
+          .eq('id', threadId)
+        if (trErr) {
+          console.error('deleteThread (RAG) failed', trErr)
+          return false
+        }
+      } else {
+        const [msgRes, trRes] = await Promise.all([
+          supabase
+            .from('chat_messages')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('thread_id', threadId),
+          supabase
+            .from('chat_threads')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('thread_id', threadId),
+        ])
+        if (msgRes.error || trRes.error) {
+          console.error('deleteThread failed', msgRes.error ?? trRes.error)
+          return false
+        }
       }
       setThreads((prev) => prev.filter((t) => t.threadId !== threadId))
       return true

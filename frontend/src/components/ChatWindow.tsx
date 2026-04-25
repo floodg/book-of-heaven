@@ -14,6 +14,8 @@ import type { Components } from 'react-markdown'
 import { supabase } from '../lib/supabase'
 import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
+import { StructuredCitations } from './StructuredCitations'
+import type { Citation } from './StructuredCitations'
 import { IconCopy, IconFolder } from './Icons'
 import type { AnythingLlmSource } from '../lib/sources'
 import { useYoutubeMap } from '../lib/YoutubeMapContext'
@@ -21,6 +23,7 @@ import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import { SourceToggle } from './SourceToggle'
 import {
   CHAT_MODELS,
+  LEGACY_CHAT_MODELS,
   DEFAULT_MODEL_SENTINEL,
   ModelSelector,
 } from './ModelSelector'
@@ -47,6 +50,8 @@ interface Message {
   // Null / undefined for user messages and for assistant messages written
   // before migration 006 added the column.
   sources?: AnythingLlmSource[] | null
+  // Structured citations from the pgvector RAG path (research_messages).
+  citations?: Citation[] | null
   // Workspace this row came from (assistant) / was targeted at (user).
   // Null for rows inserted before migration 007.
   source?: UserSource | AssistantSource | null
@@ -54,6 +59,15 @@ interface Message {
   // those keep rendering one-bubble-per-row as they did before.
   turn_id?: string | null
 }
+
+// When VITE_USE_PGVECTOR_RAG=true the ChatWindow uses the research-chat edge
+// function and reads/writes research_messages instead of chat_messages.
+const RAG_ENABLED = import.meta.env.VITE_USE_PGVECTOR_RAG === 'true'
+const CHAT_ENDPOINT = RAG_ENABLED ? 'research-chat' : 'chat-proxy'
+const MESSAGES_TABLE = RAG_ENABLED ? 'research_messages' : 'chat_messages'
+const THREADS_TABLE = RAG_ENABLED ? 'research_threads' : 'chat_threads'
+const THREAD_ID_COL = RAG_ENABLED ? 'id' : 'thread_id'
+const THREAD_MODEL_COL = RAG_ENABLED ? 'selected_model' : 'model'
 
 // Module-level cache of "messages I just rendered locally for thread X".
 // The chat flow is: user submits a message on "/" or /projects/:id, we mint a
@@ -77,7 +91,8 @@ interface FreshThreadCacheEntry {
 const freshThreadCache = new Map<string, FreshThreadCacheEntry>()
 const FRESH_THREAD_CACHE_TTL_MS = 10_000
 const MODEL_STORAGE_KEY = 'boh.model'
-const CHAT_MODEL_VALUES = new Set(CHAT_MODELS.map((m) => m.value))
+const ACTIVE_MODELS = RAG_ENABLED ? CHAT_MODELS : LEGACY_CHAT_MODELS
+const CHAT_MODEL_VALUES = new Set(ACTIVE_MODELS.map((m) => m.value))
 
 /** Optimistic new-chat state while a job is in flight, so "/ → other thread → /" can restore. */
 const newChatPendingCache = new Map<string, FreshThreadCacheEntry>()
@@ -316,6 +331,9 @@ function AssistantBubble({
         youtubeMap={youtubeMap}
         pdfPages={pdfPages}
       />
+      {message.citations && message.citations.length > 0 && (
+        <StructuredCitations citations={message.citations} />
+      )}
     </div>
   )
 }
@@ -432,6 +450,7 @@ export function ChatWindow({
     string | null
   >(null)
   const [source, setSource] = usePreferredSource()
+  const [volumeFilter, setVolumeFilter] = useState<number | null>(null)
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     try {
@@ -506,12 +525,12 @@ export function ChatWindow({
       setSelectedModel(model)
       if (!threadId) return
       void supabase
-        .from('chat_threads')
+        .from(THREADS_TABLE)
         .update({
-          model,
+          [THREAD_MODEL_COL]: model,
           updated_at: new Date().toISOString(),
         })
-        .eq('thread_id', threadId)
+        .eq(THREAD_ID_COL, threadId)
         .eq('user_id', user.id)
     },
     [threadId, user.id],
@@ -542,6 +561,7 @@ export function ChatWindow({
         source: AssistantSource
         reply: string
         sources: AnythingLlmSource[] | null
+        citations: Citation[] | null
       }> = []
       for (const r of rawReplies) {
         if (!r || typeof r !== 'object') continue
@@ -558,7 +578,10 @@ export function ChatWindow({
         const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
           ? (rec.sources as AnythingLlmSource[])
           : null
-        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal })
+        const citationsVal = Array.isArray(rec.citations) && rec.citations.length > 0
+          ? (rec.citations as Citation[])
+          : null
+        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal, citations: citationsVal })
       }
 
       let assistantMessages: Message[]
@@ -570,6 +593,7 @@ export function ChatWindow({
           content: r.reply,
           created_at: new Date(tsBase + i).toISOString(),
           sources: r.sources,
+          citations: r.citations,
           source: r.source,
           turn_id: submitTurnId,
         }))
@@ -741,7 +765,7 @@ export function ChatWindow({
     if (cached) freshThreadCache.delete(threadId)
 
     supabase
-      .from('chat_messages')
+      .from(MESSAGES_TABLE)
       .select('*')
       .eq('user_id', user.id)
       .eq('thread_id', threadId)
@@ -774,7 +798,7 @@ export function ChatWindow({
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages',
+          table: MESSAGES_TABLE,
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
@@ -792,7 +816,7 @@ export function ChatWindow({
           void (async () => {
             if (processedTurnIdsRef.current.has(tid)) return
             const { data: urow } = await supabase
-              .from('chat_messages')
+              .from(MESSAGES_TABLE)
               .select('source')
               .eq('user_id', user.id)
               .eq('thread_id', threadId)
@@ -806,7 +830,7 @@ export function ChatWindow({
             const expectAssistants =
               userSource === 'both' ? 2 : userSource ? 1 : 1
             const { data, error } = await supabase
-              .from('chat_messages')
+              .from(MESSAGES_TABLE)
               .select('*')
               .eq('user_id', user.id)
               .eq('thread_id', threadId)
@@ -896,12 +920,13 @@ export function ChatWindow({
       model: selectedModel,
     }
     if (projectId) body.project_id = projectId
+    if (RAG_ENABLED && volumeFilter !== null) body.volume_filter = volumeFilter
 
     let deferLoadingInFinally = false
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${CHAT_ENDPOINT}`,
         {
           method: 'POST',
           headers: {
@@ -1154,10 +1179,25 @@ export function ChatWindow({
         </div>
         <div className="chat-input-bar-toggles">
           <SourceToggle value={source} onChange={setSource} disabled={loading} />
+          {RAG_ENABLED && (
+            <select
+              className="volume-filter-select"
+              value={volumeFilter ?? ''}
+              onChange={(e) => setVolumeFilter(e.target.value === '' ? null : Number(e.target.value))}
+              disabled={loading}
+              title="Filter by volume"
+            >
+              <option value="">All volumes</option>
+              {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>Volume {n}</option>
+              ))}
+            </select>
+          )}
           <ModelSelector
             value={selectedModel}
             onChange={handleModelChange}
             disabled={loading}
+            models={RAG_ENABLED ? CHAT_MODELS : LEGACY_CHAT_MODELS}
           />
           {showBothLayoutToggle ? (
             <BothLayoutToggle
