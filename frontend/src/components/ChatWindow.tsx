@@ -835,6 +835,22 @@ export function ChatWindow({
           if (data.event === 'timeout') {
             es.close()
             if (eventSourceRef.current === es) eventSourceRef.current = null
+            if (processedTurnIdsRef.current.has(submitTurnId)) return
+            processedTurnIdsRef.current.add(submitTurnId)
+            pendingTurnIdRef.current = null
+            newChatPendingCache.delete(submitThreadId)
+            endInFlightUi()
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `local-${Date.now()}-sse-timeout`,
+                role: 'assistant' as const,
+                content:
+                  'The assistant took too long and timed out. Please send the message again.',
+                created_at: new Date().toISOString(),
+                turn_id: submitTurnId,
+              },
+            ])
             return
           }
           if (data.event === 'error') {
@@ -870,8 +886,22 @@ export function ChatWindow({
         es.onerror = () => {
           es.close()
           if (eventSourceRef.current === es) eventSourceRef.current = null
-          // Realtime on this thread will still deliver assistant rows; keep
-          // loading true until that fires or the user navigates.
+          if (processedTurnIdsRef.current.has(submitTurnId)) return
+          processedTurnIdsRef.current.add(submitTurnId)
+          pendingTurnIdRef.current = null
+          newChatPendingCache.delete(submitThreadId)
+          endInFlightUi()
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `local-${Date.now()}-sse-disconnect`,
+              role: 'assistant' as const,
+              content:
+                'The response stream disconnected before completion. Please retry.',
+              created_at: new Date().toISOString(),
+              turn_id: submitTurnId,
+            },
+          ])
         }
         return
       }

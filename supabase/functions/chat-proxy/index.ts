@@ -19,6 +19,8 @@ const jsonHeaders = {
 
 type Source = 'text' | 'narrated' | 'both'
 type AssistantSource = 'text' | 'narrated'
+const MAIN_CHAT_TIMEOUT_MS = 75_000
+const TITLE_CHAT_TIMEOUT_MS = 30_000
 
 function workspaceSlugFor(source: AssistantSource): string {
   if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
@@ -38,7 +40,7 @@ export interface AnythingLlmSource {
 async function anythingLlmChat(
   message: string,
   workspaceSlug: string,
-  options?: { sessionId?: string; mode?: 'chat' | 'query' },
+  options?: { sessionId?: string; mode?: 'chat' | 'query'; timeoutMs?: number },
 ): Promise<{
   text: string
   error: string | null
@@ -47,73 +49,94 @@ async function anythingLlmChat(
   const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
   const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
   const mode = options?.mode ?? 'query'
+  const timeoutMs = options?.timeoutMs ?? MAIN_CHAT_TIMEOUT_MS
   const body: Record<string, unknown> = { message, mode }
   if (options?.sessionId) body.sessionId = options.sessionId
 
-  const response = await fetch(
-    `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${anythingLlmKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+  const abortController = new AbortController()
+  const timeoutHandle = setTimeout(() => {
+    abortController.abort(
+      `AnythingLLM timed out after ${timeoutMs}ms for workspace ${workspaceSlug}`,
+    )
+  }, timeoutMs)
+
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  try {
+    const response = await fetch(
+      `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${anythingLlmKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify(body),
+        signal: abortController.signal,
       },
-      body: JSON.stringify(body),
-    },
-  )
+    )
 
-  if (!response.ok || !response.body) {
-    const errText = response.body ? await response.text() : '(no body)'
-    console.error('AnythingLLM request failed', response.status, errText)
-    throw new Error(`AnythingLLM responded with ${response.status}`)
-  }
+    if (!response.ok || !response.body) {
+      const errText = response.body ? await response.text() : '(no body)'
+      console.error('AnythingLLM request failed', response.status, errText)
+      throw new Error(`AnythingLLM responded with ${response.status}`)
+    }
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let fullText = ''
-  let llmError: string | null = null
-  let sources: AnythingLlmSource[] | null = null
+    reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullText = ''
+    let llmError: string | null = null
+    let sources: AnythingLlmSource[] | null = null
 
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
 
-    let sepIndex: number
-    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-      const event = buffer.slice(0, sepIndex)
-      buffer = buffer.slice(sepIndex + 2)
+      let sepIndex: number
+      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, sepIndex)
+        buffer = buffer.slice(sepIndex + 2)
 
-      for (const line of event.split('\n')) {
-        if (!line.startsWith('data:')) continue
-        const jsonStr = line.slice(5).trim()
-        if (!jsonStr) continue
-        try {
-          const chunk = JSON.parse(jsonStr) as {
-            textResponse?: unknown
-            error?: unknown
-            close?: boolean
-            sources?: unknown
+        for (const line of event.split('\n')) {
+          if (!line.startsWith('data:')) continue
+          const jsonStr = line.slice(5).trim()
+          if (!jsonStr) continue
+          try {
+            const chunk = JSON.parse(jsonStr) as {
+              textResponse?: unknown
+              error?: unknown
+              close?: boolean
+              sources?: unknown
+            }
+            if (typeof chunk.textResponse === 'string') {
+              fullText += chunk.textResponse
+            }
+            if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
+              llmError = chunk.error
+            }
+            if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
+              sources = chunk.sources as AnythingLlmSource[]
+            }
+          } catch (parseErr) {
+            console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
           }
-          if (typeof chunk.textResponse === 'string') {
-            fullText += chunk.textResponse
-          }
-          if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
-            llmError = chunk.error
-          }
-          if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
-            sources = chunk.sources as AnythingLlmSource[]
-          }
-        } catch (parseErr) {
-          console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
         }
       }
     }
-  }
 
-  return { text: fullText, error: llmError, sources }
+    return { text: fullText, error: llmError, sources }
+  } finally {
+    clearTimeout(timeoutHandle)
+    if (reader) {
+      try {
+        await reader.cancel()
+      } catch {
+        // Ignore cancel errors from already-closed streams.
+      }
+    }
+  }
 }
 
 function normalizeTitle(raw: string): string | null {
@@ -155,6 +178,7 @@ async function generateThreadTitle(
       {
         sessionId: `book-of-heaven-title-${threadId}`,
         mode: 'chat',
+        timeoutMs: TITLE_CHAT_TIMEOUT_MS,
       },
     )
     if (error || !text.trim()) {
@@ -290,6 +314,7 @@ async function runChatTurn(
         const result = await anythingLlmChat(composedMessage, slug, {
           sessionId: threadId,
           mode: 'query',
+          timeoutMs: MAIN_CHAT_TIMEOUT_MS,
         })
         return { ws, slug, result }
       }),

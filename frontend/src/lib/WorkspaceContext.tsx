@@ -11,6 +11,8 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+const STALE_CHAT_JOB_MS = 2 * 60 * 1000
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,17 +270,53 @@ export function WorkspaceProvider({
   const syncPendingChatJobs = useCallback(async () => {
     const { data, error: err } = await supabase
       .from('chat_turn_jobs')
-      .select('thread_id')
+      .select('id, thread_id, status, updated_at, created_at')
       .eq('user_id', user.id)
       .in('status', ['pending', 'processing'])
     if (err) {
       console.warn('syncPendingChatJobs failed', err)
       return
     }
+
+    const now = Date.now()
+    const staleJobIds: string[] = []
     const next = new Set<string>()
     for (const row of data ?? []) {
-      const id = (row as { thread_id: string }).thread_id
-      if (typeof id === 'string' && id.length > 0) next.add(id)
+      const r = row as {
+        id?: string
+        thread_id?: string
+        updated_at?: string | null
+        created_at?: string | null
+      }
+      const updatedAt = r.updated_at ?? r.created_at ?? null
+      const updatedMs = updatedAt ? Date.parse(updatedAt) : Number.NaN
+      const isStale =
+        Number.isFinite(updatedMs) && now - updatedMs > STALE_CHAT_JOB_MS
+
+      if (isStale) {
+        if (typeof r.id === 'string' && r.id.length > 0) staleJobIds.push(r.id)
+        continue
+      }
+      if (typeof r.thread_id === 'string' && r.thread_id.length > 0) {
+        next.add(r.thread_id)
+      }
+    }
+
+    if (staleJobIds.length > 0) {
+      const { error: staleUpdateErr } = await supabase
+        .from('chat_turn_jobs')
+        .update({
+          status: 'error',
+          error_message:
+            'This request timed out while waiting for the assistant. Please retry.',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .in('id', staleJobIds)
+        .in('status', ['pending', 'processing'])
+      if (staleUpdateErr) {
+        console.warn('Failed to mark stale chat jobs as error', staleUpdateErr)
+      }
     }
     setPendingThreadIds(next)
   }, [user.id])
