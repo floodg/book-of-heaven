@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   useLocation,
   useNavigate,
@@ -35,6 +35,12 @@ export function ChatPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const workspace = useWorkspace()
+  const handleVisibleThreadChange = useCallback(
+    (activeId: string | null) => {
+      workspace.setActiveThreadId(activeId)
+    },
+    [workspace.setActiveThreadId],
+  )
 
   const state = (location.state ?? null) as ChatPageRouteState | null
 
@@ -109,6 +115,7 @@ export function ChatPage() {
       initialSource={state?.initialSource ?? null}
       breadcrumb={breadcrumb}
       onAssistantResponse={handleAssistantResponse}
+      onVisibleThreadChange={handleVisibleThreadChange}
     />
   )
 }

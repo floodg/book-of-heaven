@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { Outlet } from 'react-router-dom'
 import { ChatJobNotifier } from '../components/ChatJobNotifier'
@@ -5,6 +6,7 @@ import { WorkspaceProvider } from '../lib/WorkspaceContext'
 import { YoutubeMapProvider } from '../lib/YoutubeMapContext'
 import { PdfPagesProvider } from '../lib/PdfPagesContext'
 import { Sidebar } from '../components/Sidebar'
+import { IconArrowRight } from '../components/Icons'
 import './ProtectedLayout.css'
 
 interface ProtectedLayoutProps {
@@ -23,14 +25,30 @@ interface ProtectedLayoutProps {
  * us threading props through the route config.
  */
 export function ProtectedLayout({ user, session }: ProtectedLayoutProps) {
+  const [sidebarHidden, setSidebarHidden] = useState(false)
   return (
     <WorkspaceProvider user={user}>
       <YoutubeMapProvider>
         <PdfPagesProvider>
           <div className="app-shell">
             <div className="app-main">
-              <Sidebar user={user} />
-              <Outlet context={{ user, session }} />
+              {sidebarHidden ? null : (
+                <Sidebar user={user} onHide={() => setSidebarHidden(true)} />
+              )}
+              <div className="app-content">
+                {sidebarHidden ? (
+                  <button
+                    type="button"
+                    className="app-sidebar-show-btn"
+                    onClick={() => setSidebarHidden(false)}
+                    aria-label="Show sidebar"
+                    title="Show sidebar"
+                  >
+                    <IconArrowRight size={14} />
+                  </button>
+                ) : null}
+                <Outlet context={{ user, session }} />
+              </div>
               <ChatJobNotifier user={user} session={session} />
             </div>
           </div>

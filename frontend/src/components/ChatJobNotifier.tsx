@@ -21,16 +21,35 @@ export function ChatJobNotifier({ user, session: _session }: ChatJobNotifierProp
     matchPath({ path: '/c/:threadId', end: true }, location.pathname)
       ?.params.threadId ?? null
   const workspace = useWorkspace()
+  const activeVisibleThreadId = workspace.activeThreadId ?? routeThreadId
   const [toast, setToast] = useState<{
     threadId: string
     label: string
   } | null>(null)
   const processedAssistantKeys = useRef(new Set<string>())
   const processedJobErrors = useRef(new Set<string>())
+  const activeVisibleThreadIdRef = useRef<string | null>(activeVisibleThreadId)
+  const threadsRef = useRef(workspace.threads)
 
   const dismiss = useCallback(() => setToast(null), [])
 
   const refresh = workspace.refresh
+
+  useEffect(() => {
+    activeVisibleThreadIdRef.current = activeVisibleThreadId
+  }, [activeVisibleThreadId])
+
+  useEffect(() => {
+    threadsRef.current = workspace.threads
+  }, [workspace.threads])
+
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => {
+      setToast((prev) => (prev?.threadId === toast.threadId ? null : prev))
+    }, 2500)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
 
   useEffect(() => {
     const channel = supabase
@@ -53,9 +72,9 @@ export function ChatJobNotifier({ user, session: _session }: ChatJobNotifierProp
           const key = `a:${row.id}`
           if (processedAssistantKeys.current.has(key)) return
           processedAssistantKeys.current.add(key)
-          if (row.thread_id === routeThreadId) return
+          if (row.thread_id === activeVisibleThreadIdRef.current) return
 
-          const th = workspace.threads.find(
+          const th = threadsRef.current.find(
             (t) => t.threadId === row.thread_id,
           )
           const label =
@@ -85,8 +104,8 @@ export function ChatJobNotifier({ user, session: _session }: ChatJobNotifierProp
             const key = `e:${row.id}`
             if (processedJobErrors.current.has(key)) return
             processedJobErrors.current.add(key)
-            if (row.thread_id === routeThreadId) return
-            const th = workspace.threads.find(
+            if (row.thread_id === activeVisibleThreadIdRef.current) return
+            const th = threadsRef.current.find(
               (t) => t.threadId === row.thread_id,
             )
             const label =
@@ -107,9 +126,7 @@ export function ChatJobNotifier({ user, session: _session }: ChatJobNotifierProp
     return () => {
       void supabase.removeChannel(channel)
     }
-    // workspace.threads is read inside handlers; refreshing after events keeps UI in sync.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id, routeThreadId, refresh])
+  }, [user.id, refresh])
 
   if (!toast) return null
 

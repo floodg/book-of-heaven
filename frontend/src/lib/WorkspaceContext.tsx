@@ -74,6 +74,9 @@ export interface WorkspaceApi {
 
   /** Thread ids with an LLM job still pending/processing (from `chat_turn_jobs`). */
   pendingThreadIds: ReadonlySet<string>
+  /** Thread currently visible in the main chat pane (can be a pending new thread). */
+  activeThreadId: string | null
+  setActiveThreadId: (threadId: string | null) => void
 }
 
 const WorkspaceContext = createContext<WorkspaceApi | null>(null)
@@ -204,6 +207,7 @@ export function WorkspaceProvider({
   const [pendingThreadIds, setPendingThreadIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
 
   // Guard against stale responses overwriting fresh state when refresh() is
   // called back-to-back (e.g. navigation + mutation racing each other).
@@ -603,6 +607,8 @@ export function WorkspaceProvider({
       projects,
       threads,
       pendingThreadIds,
+      activeThreadId,
+      setActiveThreadId,
       refresh,
       createProject,
       renameProject,
@@ -620,6 +626,7 @@ export function WorkspaceProvider({
       projects,
       threads,
       pendingThreadIds,
+      activeThreadId,
       refresh,
       createProject,
       renameProject,
@@ -630,6 +637,7 @@ export function WorkspaceProvider({
       pinThread,
       unpinThread,
       deleteThread,
+      setActiveThreadId,
     ],
   )
 

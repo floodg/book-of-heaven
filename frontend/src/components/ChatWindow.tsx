@@ -387,6 +387,7 @@ interface ChatWindowProps {
     threadTitle?: string | null
   } | null
   onAssistantResponse?: (threadId: string) => void
+  onVisibleThreadChange?: (threadId: string | null) => void
 }
 
 export function ChatWindow({
@@ -398,6 +399,7 @@ export function ChatWindow({
   initialSource,
   breadcrumb,
   onAssistantResponse,
+  onVisibleThreadChange,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -457,6 +459,14 @@ export function ChatWindow({
       ),
     [loading, loadingThreadId, threadId, pendingNewChatThreadId],
   )
+
+  useEffect(() => {
+    const visibleThreadId = threadId ?? loadingThreadId ?? null
+    onVisibleThreadChange?.(visibleThreadId)
+    return () => {
+      onVisibleThreadChange?.(null)
+    }
+  }, [threadId, loadingThreadId, onVisibleThreadChange])
 
   useEffect(() => {
     let cancelled = false
