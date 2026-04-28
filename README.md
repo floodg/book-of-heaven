@@ -3,13 +3,13 @@
 > *"If you only knew what it means to live in my will — there's no division between the soul and heaven."*
 > — Volume 17, Number 13
 
-A public, multi-user web platform for searching and exploring all 612 transcripts of the **Book of Heaven** by Luisa Piccarreta, powered by AI semantic search and cited answers with volume/number references.
+A public, multi-user web platform for searching and exploring all 612 transcripts of the **Book of Heaven** by Luisa Piccarreta, powered by **Supabase Postgres + pgvector** semantic search and cited passage lists (volume / PDF and narration timestamps).
 
 ---
 
 ## What It Does
 
-Anyone can create an account and ask natural language questions across the entire Book of Heaven corpus. The AI retrieves the most relevant passages and responds with structured answers and source citations like `[Book of Heaven Volume 4 – Number 4]`.
+Anyone can create an account and ask natural language questions across the entire Book of Heaven corpus. The backend retrieves the most relevant **indexed chunks** and returns ranked excerpts with inline citations like `[Book of Heaven Volume 4 – Number 4]`.
 
 Each user has their own private conversation history. All users share the same underlying document embeddings.
 
@@ -22,11 +22,9 @@ Users (browser)
       ↕  HTTPS
 React + Vite frontend         ← Vercel (free)
       ↕  Supabase Auth JWT
-Supabase Edge Function        ← secure proxy, never exposes API keys
-      ↕  API key (secret)
-AnythingLLM (VPS)             ← 612 embedded transcripts, shared
-      ↕  pay-per-use
-Anthropic Claude API          ← claude-sonnet-4-6
+Supabase Edge Function        ← secure proxy; OpenAI embeddings + pgvector RPC
+      ↕  service role (server only)
+Supabase Postgres + pgvector ← document_chunks (diary + narrated), shared
 ```
 
 ---
@@ -38,9 +36,9 @@ Anthropic Claude API          ← claude-sonnet-4-6
 | Frontend | React + Vite + TypeScript + Tailwind CSS |
 | Auth | Supabase Auth (email + Google OAuth) |
 | Database | Supabase PostgreSQL with Row Level Security |
-| API Proxy | Supabase Edge Functions (Deno) |
-| Document AI | AnythingLLM (self-hosted) |
-| LLM | Claude Sonnet 4.6 via Anthropic API |
+| API Proxy | Supabase Edge Functions (Deno) — `chat-proxy`, `semantic-search` |
+| Semantic search | Postgres `document_chunks` + pgvector + `search_document_chunks` |
+| Embeddings | OpenAI `text-embedding-3-small` (from Edge Functions) |
 | Frontend hosting | Vercel (free tier) |
 | VPS | Hetzner Cloud CX22 (~$6/month) |
 
@@ -83,8 +81,9 @@ book-of-heaven/
 │   │   ├── 004_chat_organization.sql
 │   │   └── 005_projects_redesign.sql
 │   └── functions/
-│       └── chat-proxy/
-│           └── index.ts
+│       ├── chat-proxy/
+│       ├── semantic-search/
+│       └── _shared/
 └── docs/
     ├── SPEC.md
     ├── SPEC-edge-function.md
@@ -217,7 +216,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```bash
 supabase secrets set ANYTHINGLLM_URL=https://your-vps-ip:3001
 supabase secrets set ANYTHINGLLM_KEY=your-anythingllm-api-key
-supabase secrets set ANYTHINGLLM_WORKSPACE_TEXT=book-of-heaven-text
+supabase secrets set ANYTHINGLLM_WORKSPACE_TEXT=book-of-heaven-text-files
 supabase secrets set ANYTHINGLLM_WORKSPACE_NARRATED=book-of-heaven-narrated
 ```
 

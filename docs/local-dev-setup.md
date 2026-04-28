@@ -20,10 +20,10 @@ Locally you will run:
 |---|---|---|
 | React frontend | Vite dev server | `http://localhost:5173` |
 | Supabase (auth + DB) | Docker via Supabase CLI | `http://localhost:54321` |
-| Edge Function proxy | Supabase CLI functions serve | `http://localhost:54321/functions/v1/chat-proxy` |
-| AnythingLLM | Docker container | `http://localhost:3001` |
+| Edge Function proxy | Supabase CLI functions serve | `http://127.0.0.1:54331/functions/v1/chat-proxy` (see `supabase/config.toml` for ports) |
+| Chunk index | Postgres `document_chunks` + pgvector | Populate via `index_supabase.py` in the txt/vtt splitter repos |
 
-AnythingLLM locally = the same instance you already have running with your 612 transcripts. No need to re-embed anything.
+Set `OPENAI_API_KEY` in `supabase/functions/.env` and run the ingestion scripts so `document_chunks` has rows before expecting non-empty search results.
 
 ---
 
@@ -36,25 +36,20 @@ cd book-of-heaven
 
 ---
 
-## Step 2 — AnythingLLM (already done)
+## Step 2 — OpenAI key + chunk ingestion
 
-You already have AnythingLLM running locally with your 612 transcripts embedded. Just make sure it is running before you start developing:
+1. Add `OPENAI_API_KEY=...` to `supabase/functions/.env` (same key the ingestion scripts use).
+2. From **`book-of-heaven-txt-splitter`**, with `SUPABASE_URL` + `SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) exported:
+   ```powershell
+   python index_supabase.py --limit 50
+   ```
+3. From **`book-of-heaven-vtt-splitter`**, same env vars:
+   ```powershell
+   python index_supabase.py --output-dir output --limit 50
+   ```
+   Use `--dry-run` first to sanity-check paths.
 
-```bash
-# If you ran it via Docker previously:
-docker start anythingllm
-
-# Confirm it's alive:
-curl http://localhost:3001/api/v1/auth -H "Authorization: Bearer YOUR_API_KEY"
-```
-
-If you installed AnythingLLM via the desktop app instead of Docker, just open it normally. It runs on port 3001 either way.
-
-**Get your workspace slug** — you'll need this for the Edge Function:
-
-1. Open AnythingLLM at `http://localhost:3001`
-2. Go to your **Book of Heaven** workspace settings
-3. The slug is the URL-safe name, e.g. `book-of-heaven-narrated`
+AnythingLLM is **optional** for this stack; see `anythingllm/README.md` if you still run it for side experiments.
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../schema/workspace.schema.json",
-  "name": "Book of Heaven Text",
-  "slug": "book-of-heaven-text",
+  "name": "Book of Heaven Text Files",
+  "slug": "book-of-heaven-text-files",
   "promptFile": "book-of-heaven-text.prompt.md",
   "settings": {
     "openAiTemp": 0.7,

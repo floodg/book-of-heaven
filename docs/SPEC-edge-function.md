@@ -1,18 +1,22 @@
-# Spec: Edge Function — chat-proxy
+# Spec: Edge Functions — chat-proxy & semantic-search
 
 ## Files
-- `supabase/functions/chat-proxy/index.ts` — main chat and persistence
+- `supabase/functions/chat-proxy/index.ts` — main chat turn + persistence (pgvector semantic search)
+- `supabase/functions/_shared/pgvector_search.ts` — OpenAI embeddings + `search_document_chunks` RPC
+- `supabase/functions/_shared/format_hits.ts` — markdown reply + `sources` jsonb from ranked hits
+- `supabase/functions/semantic-search/index.ts` — optional direct POST for search-only clients
 - `supabase/functions/chat-job-events/index.ts` — server-sent job status / final JSON for a `chat_turn_jobs` row
 
-## Purpose
-Secure proxy between the React frontend and AnythingLLM. Validates the user's Supabase JWT, inserts the user message, creates a `chat_turn_jobs` row, and runs the full AnythingLLM + persistence pipeline in a background task via `EdgeRuntime.waitUntil` so the HTTP response can return immediately (`202` + `job_id`). The normal completion payload (thread id, turn id, title, and `replies` array) is stored on the job when finished and is also the shape returned for an idempotent `200` when the same `turn_id` is replayed. When the run fails, the job row is set to `error` and a single assistant error bubble may be inserted. The client can poll completion either through Supabase Realtime on `chat_messages` / `chat_turn_jobs` or by opening a GET **chat-job-events** stream (see below).
+## Purpose (chat-proxy)
+Secure proxy between the React frontend and the database-backed search pipeline. Validates the user's Supabase JWT, inserts the user message, creates a `chat_turn_jobs` row, and runs **embedding + pgvector retrieval + markdown formatting** in a background task via `EdgeRuntime.waitUntil` so the HTTP response can return immediately (`202` + `job_id`). The normal completion payload (thread id, turn id, title, and `replies` array) is stored on the job when finished and is also the shape returned for an idempotent `200` when the same `turn_id` is replayed. When the run fails, the job row is set to `error` and a single assistant error bubble may be inserted. The client can poll completion either through Supabase Realtime on `chat_messages` / `chat_turn_jobs` or by opening a GET **chat-job-events** stream (see below).
+
+## Purpose (semantic-search)
+Lightweight POST endpoint with the same JWT validation: body `{ "query": "…", "source": "text"|"narrated"|"both", "match_count"?: number, "filter_volume"?: number }` returns `{ "replies": [ { "source", "reply", "sources" } ] }` without writing `chat_messages` or jobs. Useful for tooling and experiments; the main app uses **chat-proxy** so turns stay in history.
 
 ## Environment Variables
 Available via `Deno.env.get()`:
 ```
-ANYTHINGLLM_URL        e.g. http://host.docker.internal:3001
-ANYTHINGLLM_KEY        AnythingLLM API key
-ANYTHINGLLM_WORKSPACE  workspace slug e.g. book-of-heaven-narrated
+OPENAI_API_KEY         required for embeddings (same model/dim as migration: text-embedding-3-small, 1536)
 SUPABASE_URL           Supabase Kong URL, e.g. http://host.docker.internal:54331
 SERVICE_ROLE_KEY       sb_secret_... key from `supabase status`
 ```
@@ -41,7 +45,7 @@ Content-Type: application/json
 - `message` — required, non-empty string
 - `thread_id` — required, lowercase RFC 4122 UUID. Minted by the frontend on the first message of a fresh chat and reused for every subsequent message in that conversation (see `SPEC-chat-ui.md`).
 - `turn_id` — required UUID per user message. Uniquely identifies one user+assistant exchange; used for idempotent jobs and for pairing user/assistant rows.
-- `source` — required: `text`, `narrated`, or `both` (which AnythingLLM workspaces to call).
+- `source` — required: `text`, `narrated`, or `both` (which `document_chunks.source_type` rows to search).
 - `project_id` — optional, UUID. Only honoured on the **first** insert of a thread: the upserted `chat_threads` row is stamped with this project. Subsequent requests for the same thread ignore it (upsert uses `ignoreDuplicates: true`), so the client can't sneak a thread into a different project by replaying messages. See `SPEC-projects.md`.
 
 ## Response (chat-proxy)
@@ -86,7 +90,7 @@ Content-Type: application/json
 **Error responses** — all JSON with a single `error` field so the frontend can surface a meaningful message, except where 409 (above) includes `job_id`.
 - `400` — missing/empty `message`, missing/invalid `thread_id` / `turn_id` (not a UUID), missing/invalid `source`, or malformed JSON body
 - `401` — missing `Authorization` header or invalid/expired JWT (frontend treats this as "session dead" and signs the user out)
-- `500` — AnythingLLM unreachable, insert failure, or any uncaught exception in the request handler
+- `500` — OpenAI/DB failure, insert failure, or any uncaught exception in the request handler
 
 ```json
 { "error": "Missing or invalid thread_id (expected UUID)" }
@@ -128,66 +132,11 @@ The numbered flow below is implemented in the background function `runChatTurn`,
 7. Upsert a `chat_threads` row with `onConflict: 'thread_id', ignoreDuplicates: true` so every thread is immediately addressable for project assignment, even if title generation later fails. When `project_id` was supplied and the row doesn't exist yet, it's stamped on the upsert (the `ignoreDuplicates` flag guarantees no overwrite for an existing thread).
 8. Read back `chat_threads.title` and `chat_threads.project_id` for this thread. A null title means the thread still needs one (covers brand-new threads and older threads backfilled with NULL). If `project_id` is set, read `chat_projects.instructions` — trimmed, non-empty — so we can inject it as an inline system-style preamble. Both lookups are server-side only; the request body's `project_id` is never trusted past the upsert stamp.
 9. For the title seed, fetch the earliest user message in the thread from `chat_messages` (for a brand-new thread this is the message we just inserted in step 6; for an older thread that predates the `chat_threads` table it's the historical first question, which keeps the title faithful to the conversation's actual topic).
-10. Build the LLM-bound message. When project instructions are present, wrap the user message like:
-    ```text
-    You are acting inside a user's project. Follow these project-level
-    instructions for the rest of this conversation:
-
-    ---
-    {project.instructions}
-    ---
-
-    User message:
-    {message}
-    ```
-    AnythingLLM's `/stream-chat` endpoint doesn't expose a per-request system prompt slot, so baking the preamble into `message` is the least invasive integration. The title LLM call deliberately **skips** instructions — titles should describe the user's question, not the project's framing.
-11. Fire two AnythingLLM calls **in parallel** with `Promise.all`:
-   1. The main chat request (always). `message` here is the composed message from step 10 — with the project-instructions preamble when applicable, otherwise the user's raw text.
-      ```
-      URL: {ANYTHINGLLM_URL}/api/v1/workspace/{ANYTHINGLLM_WORKSPACE}/stream-chat
-      Headers:
-        Authorization: Bearer {ANYTHINGLLM_KEY}
-        Content-Type: application/json
-        Accept: text/event-stream
-      Body: { "message": "<composed message>", "mode": "chat" }
-      ```
-      We use `/stream-chat` rather than `/chat` because AnythingLLM's non-streaming endpoint returns an empty `textResponse` for our workspace configuration (LLM/embedding combination) while the streaming endpoint works reliably. The proxy aggregates the stream server-side so the public contract stays non-streaming.
-   2. The title request (only when the thread needs a title) — same endpoint, with a wrapper prompt:
-      ```
-      Generate a 3 to 6 word title that describes the topic of the user
-      request below. The title is shown in a chat history sidebar, so it must
-      be concise and readable. Output ONLY the title itself — no quotes, no
-      trailing punctuation, no citations, no "Title:" prefix, no explanation,
-      no markdown.
-
-      User request: <titleSeed>
-      ```
-      Run title generation in parallel with the main response so it does not extend user-perceived latency; the title stream is short (a few tokens) and typically finishes well before the main reply.
-12. Read each SSE stream, parse `data: { ... }` frames, accumulate `chunk.textResponse` into `fullText`, capture any `chunk.error` string, and capture the last non-empty `chunk.sources` array seen on the stream. (Shared helper `anythingLlmChat` does this for both calls; only the main-response sources are used, the title call's sources are dropped.)
-13. Decide the final reply:
-    - `fullText.trim()` non-empty → use `fullText`
-    - Otherwise if `llmError` was set → return `"AnythingLLM error: <llmError>"` so the frontend shows a diagnostic rather than a blank reply
-    - Otherwise → return an instructional fallback message explaining the workspace needs documents and an LLM configured
-14. Normalize the title output: strip any `[Book of Heaven ...]` / `[Volume ...]` citations the system prompt may have leaked in, strip `Title:` prefixes, take only the first non-empty line, strip wrapping quotes (straight + curly), strip trailing `.?!,;:`, collapse whitespace, and hard-cap at 60 characters (appending `…` if it had to be cut). If what's left is under 2 characters, treat the title as unusable and skip the update.
-15. Insert the assistant reply into `chat_messages` using the same `thread_id`, attaching the retrieval sources we captured in step 12 (or `null` if the stream didn't surface any):
-    ```json
-    {
-      "user_id": "<user.id>",
-      "role": "assistant",
-      "content": "<reply>",
-      "thread_id": "<thread_id>",
-      "sources": "<mainResult.sources | null>"
-    }
-    ```
-    The column is `jsonb` (migration `006_chat_message_sources.sql`) and the frontend treats every field as optional.
-16. If a title was generated, update the existing `chat_threads` row (the row already exists because step 7 upserted it):
-    ```sql
-    update chat_threads
-       set title = :title, updated_at = now()
-     where thread_id = :thread_id and user_id = :user_id and title is null
-    ```
-    The `title is null` guard prevents two concurrent requests racing on the same thread from clobbering each other's titles; whichever one wins the race sets the title and the other one becomes a no-op. Any update error is logged but not thrown — we'd rather return the user's reply than 500 over a cosmetic title.
-17. Return `{ reply, thread_id, title, sources }` with JSON + CORS headers. `title` is `null` when no title was generated this request; `sources` is the (possibly `null`) retrieval payload from step 12.
+10. Build the **search query string** the same way as before: when project instructions are present, prepend the same preamble so project-scoped turns embed the combined text.
+11. Call OpenAI **embeddings** once for that string (`text-embedding-3-small`, 1536 dimensions).
+12. For each assistant corpus implied by `source` (`text`, `narrated`, or both in parallel), call Postgres RPC `search_document_chunks` with the embedding, `match_count`, `filter_corpus`, and optional `filter_volume`.
+13. Turn ranked rows into markdown (`### Semantic search results`, numbered citations + blockquotes) and a `sources` jsonb array (chunk text + metadata for the UI). Insert **one** assistant row per corpus with the shared `turn_id`.
+14. If the thread still has no title, derive one with the same `normalizeTitle` heuristic on the title seed (first ~8 words of the earliest user message) and update `chat_threads` where `title is null`.
 
 ## CORS Headers (on every response)
 ```
@@ -196,24 +145,18 @@ Access-Control-Allow-Headers: authorization, content-type
 Access-Control-Allow-Methods: POST, OPTIONS
 ```
 
-## AnythingLLM API reference (streaming)
+## OpenAI embeddings (reference)
 ```
-POST /api/v1/workspace/{slug}/stream-chat
-Authorization: Bearer {key}
+POST https://api.openai.com/v1/embeddings
+Authorization: Bearer {OPENAI_API_KEY}
 Content-Type: application/json
-Accept: text/event-stream
 
-Body: { "message": string, "mode": "chat" }
-
-Response: text/event-stream of frames shaped like:
-  data: { "id": "...", "type": "textResponseChunk", "textResponse": "..."}
-  data: { "id": "...", "type": "finalizeResponseStream", "close": true }
-  data: { "error": "..." }   // on failure
+Body: { "model": "text-embedding-3-small", "input": "<string>", "dimensions": 1536 }
 ```
 
 ## Error handling
 - Wrap the entire handler in try/catch
-- Log errors with `console.error` (full object for AnythingLLM failures so the dev terminal shows the raw upstream response)
+- Log errors with `console.error` (include OpenAI / Supabase RPC error bodies when safe)
 - Return 500 with `{ "error": "Internal error" }` — never expose internal stack traces or the service role key to the client
 - 4xx responses **do** include a short human-readable `error` string because the client displays it verbatim to help the user recover
 

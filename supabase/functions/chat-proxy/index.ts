@@ -1,6 +1,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { embedQuery, searchDocumentChunks } from '../_shared/pgvector_search.ts'
+import {
+  type AnythingLlmSource,
+  type AssistantSource,
+  hitsToReplyMarkdown,
+  hitsToSources,
+} from '../_shared/format_hits.ts'
+
+export type { AnythingLlmSource }
 
 declare const EdgeRuntime: {
   waitUntil(promise: PromiseLike<unknown>): void
@@ -18,126 +27,8 @@ const jsonHeaders = {
 }
 
 type Source = 'text' | 'narrated' | 'both'
-type AssistantSource = 'text' | 'narrated'
-const MAIN_CHAT_TIMEOUT_MS = 75_000
-const TITLE_CHAT_TIMEOUT_MS = 30_000
 
-function workspaceSlugFor(source: AssistantSource): string {
-  if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
-  return Deno.env.get('ANYTHINGLLM_WORKSPACE_NARRATED')!
-}
-
-export interface AnythingLlmSource {
-  title?: string
-  chunkSource?: string
-  text?: string
-  score?: number
-  _distance?: number
-  metadata?: Record<string, unknown>
-  [key: string]: unknown
-}
-
-async function anythingLlmChat(
-  message: string,
-  workspaceSlug: string,
-  options?: { sessionId?: string; mode?: 'chat' | 'query'; timeoutMs?: number },
-): Promise<{
-  text: string
-  error: string | null
-  sources: AnythingLlmSource[] | null
-}> {
-  const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
-  const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
-  const mode = options?.mode ?? 'query'
-  const timeoutMs = options?.timeoutMs ?? MAIN_CHAT_TIMEOUT_MS
-  const body: Record<string, unknown> = { message, mode }
-  if (options?.sessionId) body.sessionId = options.sessionId
-
-  const abortController = new AbortController()
-  const timeoutHandle = setTimeout(() => {
-    abortController.abort(
-      `AnythingLLM timed out after ${timeoutMs}ms for workspace ${workspaceSlug}`,
-    )
-  }, timeoutMs)
-
-  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
-  try {
-    const response = await fetch(
-      `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${anythingLlmKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-        },
-        body: JSON.stringify(body),
-        signal: abortController.signal,
-      },
-    )
-
-    if (!response.ok || !response.body) {
-      const errText = response.body ? await response.text() : '(no body)'
-      console.error('AnythingLLM request failed', response.status, errText)
-      throw new Error(`AnythingLLM responded with ${response.status}`)
-    }
-
-    reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let fullText = ''
-    let llmError: string | null = null
-    let sources: AnythingLlmSource[] | null = null
-
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-
-      let sepIndex: number
-      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-        const event = buffer.slice(0, sepIndex)
-        buffer = buffer.slice(sepIndex + 2)
-
-        for (const line of event.split('\n')) {
-          if (!line.startsWith('data:')) continue
-          const jsonStr = line.slice(5).trim()
-          if (!jsonStr) continue
-          try {
-            const chunk = JSON.parse(jsonStr) as {
-              textResponse?: unknown
-              error?: unknown
-              close?: boolean
-              sources?: unknown
-            }
-            if (typeof chunk.textResponse === 'string') {
-              fullText += chunk.textResponse
-            }
-            if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
-              llmError = chunk.error
-            }
-            if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
-              sources = chunk.sources as AnythingLlmSource[]
-            }
-          } catch (parseErr) {
-            console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
-          }
-        }
-      }
-    }
-
-    return { text: fullText, error: llmError, sources }
-  } finally {
-    clearTimeout(timeoutHandle)
-    if (reader) {
-      try {
-        await reader.cancel()
-      } catch {
-        // Ignore cancel errors from already-closed streams.
-      }
-    }
-  }
-}
+const DEFAULT_MATCH_COUNT = 12
 
 function normalizeTitle(raw: string): string | null {
   let t = raw
@@ -160,36 +51,11 @@ function normalizeTitle(raw: string): string | null {
   return t
 }
 
-async function generateThreadTitle(
-  userMessage: string,
-  threadId: string,
-): Promise<string | null> {
-  const prompt =
-    'Generate a 3 to 6 word title that describes the topic of the user request below. ' +
-    'The title is shown in a chat history sidebar, so it must be concise and readable. ' +
-    'Output ONLY the title itself — no quotes, no trailing punctuation, no citations, ' +
-    'no "Title:" prefix, no explanation, no markdown.\n\n' +
-    `User request: ${userMessage}`
-
-  try {
-    const { text, error } = await anythingLlmChat(
-      prompt,
-      workspaceSlugFor('narrated'),
-      {
-        sessionId: `book-of-heaven-title-${threadId}`,
-        mode: 'chat',
-        timeoutMs: TITLE_CHAT_TIMEOUT_MS,
-      },
-    )
-    if (error || !text.trim()) {
-      console.warn('Title generation returned no usable text', { error })
-      return null
-    }
-    return normalizeTitle(text)
-  } catch (err) {
-    console.warn('Title generation failed (non-fatal)', err)
-    return null
-  }
+function heuristicThreadTitle(userMessage: string): string | null {
+  const t = userMessage.replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  const words = t.split(' ').slice(0, 8).join(' ')
+  return normalizeTitle(words)
 }
 
 function workspacesFor(source: Source): AssistantSource[] {
@@ -198,18 +64,6 @@ function workspacesFor(source: Source): AssistantSource[] {
   return ['text', 'narrated']
 }
 
-function pickReplyText(
-  result: { text: string; error: string | null },
-  workspaceSlug: string,
-): string {
-  if (result.text.trim().length > 0) return result.text
-  if (result.error) return `AnythingLLM error: ${result.error}`
-  return (
-    'The assistant returned no text. Check the AnythingLLM desktop app: workspace "' +
-    workspaceSlug +
-    '" must have documents embedded and an LLM configured.'
-  )
-}
 
 type JobResult = {
   thread_id: string
@@ -260,7 +114,7 @@ async function runChatTurn(
 
     const { data: threadRow, error: threadLookupError } = await supabase
       .from('chat_threads')
-      .select('title, project_id')
+      .select('title')
       .eq('thread_id', threadId)
       .eq('user_id', userId)
       .maybeSingle()
@@ -268,24 +122,6 @@ async function runChatTurn(
       console.warn('chat_threads lookup failed; skipping title gen', threadLookupError)
     }
     const needsTitle = !threadRow?.title
-    const threadProjectId: string | null = threadRow?.project_id ?? null
-
-    let projectInstructions: string | null = null
-    if (threadProjectId) {
-      const { data: projectRow, error: projectLookupError } = await supabase
-        .from('chat_projects')
-        .select('instructions')
-        .eq('id', threadProjectId)
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (projectLookupError) {
-        console.warn('chat_projects lookup failed; skipping instructions', projectLookupError)
-      }
-      const raw = projectRow?.instructions
-      if (typeof raw === 'string' && raw.trim().length > 0) {
-        projectInstructions = raw.trim()
-      }
-    }
 
     let titleSeed = message
     if (needsTitle) {
@@ -303,47 +139,44 @@ async function runChatTurn(
       }
     }
 
-    const composedMessage = projectInstructions
-      ? `You are acting inside a user's project. Follow these project-level instructions for the rest of this conversation:\n\n---\n${projectInstructions}\n---\n\nUser message:\n${message}`
-      : message
-
+    // pgvector query embedding: use the user message only. Project instructions are long
+    // boilerplate relative to short questions and pull the vector away from the actual topic.
+    const queryEmbedding = await embedQuery(message.trim())
     const workspaces = workspacesFor(source)
-    const mainResultsPromise = Promise.all(
+    const matchCount = DEFAULT_MATCH_COUNT
+    const filterVolume: number | null = null
+
+    const mainResults = await Promise.all(
       workspaces.map(async (ws) => {
-        const slug = workspaceSlugFor(ws)
-        const result = await anythingLlmChat(composedMessage, slug, {
-          sessionId: threadId,
-          mode: 'query',
-          timeoutMs: MAIN_CHAT_TIMEOUT_MS,
-        })
-        return { ws, slug, result }
+        const hits = await searchDocumentChunks(
+          supabase,
+          queryEmbedding,
+          ws,
+          matchCount,
+          filterVolume,
+        )
+        const reply = hitsToReplyMarkdown(hits, ws, message)
+        const sourcesForDb = hitsToSources(hits)
+        return { ws, reply, sources: sourcesForDb }
       }),
     )
 
-    const [mainResults, title] = await Promise.all([
-      mainResultsPromise,
-      needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
-    ])
+    const title = needsTitle ? heuristicThreadTitle(titleSeed) : null
 
-    const assistantRows = mainResults.map(({ ws, slug, result }) => {
-      const reply = pickReplyText(result, slug)
-      const sourcesForDb =
-        result.sources && result.sources.length > 0 ? result.sources : null
-      return {
-        row: {
-          user_id: userId,
-          role: 'assistant' as const,
-          content: reply,
-          thread_id: threadId,
-          turn_id: turnId,
-          source: ws,
-          sources: sourcesForDb,
-        },
-        reply,
-        ws,
-        sources: sourcesForDb,
-      }
-    })
+    const assistantRows = mainResults.map(({ ws, reply, sources }) => ({
+      row: {
+        user_id: userId,
+        role: 'assistant' as const,
+        content: reply,
+        thread_id: threadId,
+        turn_id: turnId,
+        source: ws,
+        sources: sources,
+      },
+      reply,
+      ws,
+      sources,
+    }))
 
     const { error: insertAssistantError } = await supabase
       .from('chat_messages')

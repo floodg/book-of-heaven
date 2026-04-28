@@ -37,7 +37,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   created_at: string
-  // Retrieval sources AnythingLLM returned for this (assistant) turn.
+  // Retrieval sources (chunk hits) persisted for this (assistant) turn.
   // Null / undefined for user messages and for assistant messages written
   // before migration 006 added the column.
   sources?: AnythingLlmSource[] | null
@@ -348,7 +348,7 @@ function groupIntoTurns(messages: Message[]): Turn[] {
     }
   }
   // Within a split turn, keep "Text" on the left and "Narrated" on the right
-  // regardless of which AnythingLLM call landed in the DB first. This also
+  // regardless of which assistant row arrived first. This also
   // stabilizes the layout between the in-memory submit path and the refetch
   // path where ordering depends on Supabase's created_at resolution.
   for (const t of turns) {

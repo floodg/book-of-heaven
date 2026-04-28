@@ -1,5 +1,7 @@
 # AnythingLLM Workspace Config
 
+> **Note:** The production app path uses **Supabase `document_chunks` + pgvector** for semantic search (see `supabase/migrations/010_document_chunks.sql` and `index_supabase.py` in the splitter repos). This directory remains useful for **reference prompts / workspace JSON** or if you run AnythingLLM locally for experiments—it is no longer required for the default chat flow.
+
 This directory is the source of truth for our AnythingLLM workspace settings — most importantly the **system prompt** that instructs Claude how to answer, attribute, and cite. Committing it here means local dev and the production VPS can be kept in sync with one command instead of being configured by hand through the UI.
 
 ## Layout
@@ -11,8 +13,8 @@ anythingllm/
 └── workspaces/
     ├── book-of-heaven-narrated.config.json ← non-prompt settings for the "narrated" workspace (audio transcripts)
     ├── book-of-heaven-narrated.prompt.md   ← system prompt for the "narrated" workspace
-    ├── book-of-heaven-text.config.json     ← non-prompt settings for the "text" workspace (diary PDFs)
-    └── book-of-heaven-text.prompt.md       ← system prompt for the "text" workspace (markdown is just for readability; AnythingLLM stores it as plain text)
+    ├── book-of-heaven-text.config.json     ← non-prompt settings for the "text" workspace (`book-of-heaven-text-files`)
+    └── book-of-heaven-text.prompt.md       ← system prompt for the text workspace (markdown is just for readability; AnythingLLM stores it as plain text)
 ```
 
 ## What's captured
@@ -77,14 +79,14 @@ curl -s -H "Authorization: Bearer $ANYTHINGLLM_KEY" \
 
 ## Deployment workflow
 
-Both workspaces — `book-of-heaven-text` and `book-of-heaven-narrated` — must exist and be populated on every instance (local + VPS). The chat-proxy edge function picks one or the other (or both, in parallel) per request based on the frontend's per-message source selector; if a slug is missing, that source will surface an error in the UI instead of silently falling back.
+Both workspaces — `book-of-heaven-text-files` (text) and `book-of-heaven-narrated` — must exist and be populated on every instance (local + VPS). The chat-proxy edge function picks one or the other (or both, in parallel) per request based on the frontend's per-message source selector; if a slug is missing, that source will surface an error in the UI instead of silently falling back.
 
 Typical flow when deploying to the VPS for the first time:
 
 1. Install AnythingLLM on the VPS (see `docs/vps-setup.md`).
 2. Create **both** workspaces and embed their documents:
    - `book-of-heaven-narrated`: 221 VTT transcripts of Francis Hogan's readings.
-   - `book-of-heaven-text`: the 36 diary volume PDFs.
+   - `book-of-heaven-text-files`: diary text chunks (markdown), e.g. from `book-of-heaven-txt-splitter`.
 3. Run `apply-workspace.mjs` against the VPS URL **once per workspace** to configure settings + system prompt:
 
    ```bash

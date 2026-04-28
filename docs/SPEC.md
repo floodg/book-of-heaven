@@ -2,7 +2,7 @@
 
 ## What We're Building
 
-A public multi-user web platform for searching and exploring all 612 transcripts of the Book of Heaven by Luisa Piccarreta. Users sign up, ask natural language questions, and receive AI-generated answers with cited volume/number references. Each user has private conversation history. All users share the same underlying document embeddings.
+A public multi-user web platform for searching and exploring all 612 transcripts of the Book of Heaven by Luisa Piccarreta. Users sign up, ask natural language questions, and receive **semantic search results** (ranked passages with citations) from Postgres + pgvector—no generative LLM in the default path. Each user has private conversation history. All users share the same underlying chunk embeddings in `document_chunks`.
 
 ---
 
@@ -14,9 +14,9 @@ A public multi-user web platform for searching and exploring all 612 transcripts
 | Styling | Tailwind CSS v3 | Already installed |
 | Auth | Supabase Auth + Auth UI React | Email + Google OAuth |
 | Database | Supabase PostgreSQL | Local on port 54331 |
-| API Proxy | Supabase Edge Function (Deno) | `/supabase/functions/chat-proxy` |
-| Document AI | AnythingLLM desktop app | Running on port 3001 |
-| LLM | Anthropic Claude Sonnet 4.6 via AnythingLLM | Configured in AnythingLLM |
+| API Proxy | Supabase Edge Functions (Deno) | `/supabase/functions/chat-proxy`, `/supabase/functions/semantic-search` |
+| Semantic search | Supabase PostgreSQL + pgvector + `search_document_chunks` RPC | Chunks ingested via `index_supabase.py` in the txt/vtt splitter repos |
+| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) | Called from Edge Functions with `OPENAI_API_KEY` |
 
 ---
 
@@ -28,7 +28,6 @@ A public multi-user web platform for searching and exploring all 612 transcripts
 | Supabase API | http://127.0.0.1:54331 |
 | Supabase Studio | http://127.0.0.1:54333 |
 | Edge Functions | http://127.0.0.1:54331/functions/v1 |
-| AnythingLLM | http://localhost:3001 |
 
 ### Environment files
 
@@ -40,12 +39,9 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
 
 `supabase/functions/.env`:
 ```
-ANYTHINGLLM_URL=http://host.docker.internal:3001
-ANYTHINGLLM_KEY=<your-key>
-ANYTHINGLLM_WORKSPACE_TEXT=book-of-heaven-text
-ANYTHINGLLM_WORKSPACE_NARRATED=book-of-heaven-narrated
 SUPABASE_URL=http://host.docker.internal:54331
 SERVICE_ROLE_KEY=sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz
+OPENAI_API_KEY=<your-openai-key>
 ```
 
 > The edge runtime refuses to load any custom env var whose name starts with `SUPABASE_`, so the service role key is stored as `SERVICE_ROLE_KEY` (not `SUPABASE_SERVICE_ROLE_KEY`). See `SPEC-edge-function.md`.
@@ -173,20 +169,17 @@ Edge Function — reads chat_threads.project_id back, fetches chat_projects.inst
                  if the thread is in a project. Prepends instructions to the message
                  as a system-style preamble.
       ↓
-Edge Function — fans out to 1 workspace (text or narrated) or 2 workspaces (both) via
-                 Promise.all to AnythingLLM /stream-chat, aggregating each SSE stream,
-                 (in parallel with a title-generation call against the narrated workspace
-                 when the thread has no title yet); each call captures its own `sources`
-                 retrieval payload on the finalize frame
+Edge Function — embeds the (optionally project-prefixed) user message with OpenAI
+                 `text-embedding-3-small`, then for each corpus (`text` and/or `narrated`)
+                 calls Postgres RPC `search_document_chunks`, ranks `document_chunks` by
+                 cosine distance, and formats markdown replies + `sources` jsonb from hits
       ↓
-AnythingLLM — for each workspace, searches embedded documents, calls Claude, streams back
-                 text chunks and source chunks
-      ↓
-Edge Function — inserts 1 or 2 assistant rows (one per workspace) into chat_messages with
+Edge Function — inserts 1 or 2 assistant rows (one per corpus) into chat_messages with
                  the shared turn_id and source ∈ { 'text', 'narrated' }, persisting per-reply
                  retrieval sources into chat_messages.sources (jsonb)
       ↓
-Edge Function — updates chat_threads.title if one was generated this turn
+Edge Function — updates chat_threads.title from a short heuristic on the first user
+                 message when the thread has no title yet
       ↓
 Edge Function — returns
                  { thread_id, turn_id, title?, replies: [{source, reply, sources}] }
@@ -206,18 +199,18 @@ ChatPage.tsx — calls WorkspaceContext.refresh(); Sidebar + pages re-render wit
 
 ## Per-Message Source Selection
 
-The app ships with **two** AnythingLLM workspaces configured on the same instance:
+The app ships with **two corpora** in `document_chunks`, distinguished by `source_type`:
 
-| Workspace slug | Contents | Citation format |
-|---|---|---|
-| `book-of-heaven-text` | Diary PDFs (Volume_01 … Volume_36) | `[Volume 25.pdf - January 13, 1929]` |
-| `book-of-heaven-narrated` | Francis Hogan's audio transcripts (VTT) | `[Book of Heaven Volume 4 - Number 7 (01:23:45)]` |
+| `source_type` | Ingestion | Contents | Citation format in replies |
+|---|---|---|---|
+| `text` | `book-of-heaven-txt-splitter` → `index_supabase.py` | Diary text chunks | `[VOLUME25.pdf - January 13, 1929]` |
+| `narrated` | `book-of-heaven-vtt-splitter` → `index_supabase.py` | Francis Hogan VTT narration chunks | `[Book of Heaven Volume 4 - Number 7 (01:23:45)]` |
 
 The input bar on `/`, `/c/:threadId`, and `/projects/:id` has a three-way segmented `SourceToggle`:
 
-- **Text** — searches the diary PDFs only (one AnythingLLM call).
-- **Narrated** — searches the audio transcripts only (one AnythingLLM call).
-- **Both** — searches both in parallel and the UI renders the two replies side-by-side.
+- **Text** — RPC filter `source_type = 'text'` only.
+- **Narrated** — RPC filter `source_type = 'narrated'` only.
+- **Both** — two RPC passes (or parallel calls); UI renders the two replies side-by-side.
 
 The selection is **per message**, not per thread. A user can switch freely within a thread and each turn is persisted with its own `chat_messages.source`. Assistant rows always carry a concrete workspace (`'text'` or `'narrated'`); user rows carry whichever option the user picked (`'text'`, `'narrated'`, or `'both'`). Rows of the same turn share `chat_messages.turn_id`, which is what `ChatWindow` uses to group a user question with its 1-2 assistant replies.
 
@@ -229,14 +222,14 @@ Citation parsing in `frontend/src/lib/citations.ts` already accepts both formats
 
 ## Key Design Decisions
 
-- **Edge Function as proxy** — the AnythingLLM API key never reaches the browser
+- **Edge Function as proxy** — the OpenAI API key and service role key never reach the browser
 - **Per-user RLS** — Supabase Row Level Security ensures users only see their own messages
-- **Shared embeddings** — all users query the same AnythingLLM workspace; no per-user indexing needed
+- **Shared chunk index** — all users query the same `document_chunks` rows; no per-user indexing needed
 - **Threads are UUIDs, not days** — every "New Chat" click mints a fresh `thread_id`, so same-day conversations stay separate. The v1 approach of grouping by calendar day proved confusing once users had more than one conversation in the same day.
 - **Client mints `thread_id`** — keeps the edge function stateless with respect to thread lifecycle; the server just writes whatever UUID the client supplies. RLS still prevents cross-user reads/writes because every row is keyed by `user_id = auth.uid()`.
 - **Citation highlighting** — responses contain `[Book of Heaven Volume X - Number Y]` and related patterns that are rendered as styled amber pills inline with the surrounding markdown.
-- **Markdown rendering for assistant messages** — AnythingLLM returns markdown (headings, bold, lists, blockquotes); we render it with `react-markdown` rather than as plain text.
-- **Streaming is internal, not public** — the chat-proxy consumes AnythingLLM's SSE `/stream-chat` endpoint (the non-streaming `/chat` endpoint returns empty replies for our workspace config), but aggregates server-side and returns a single JSON body so the client contract stays simple.
+- **Markdown rendering for assistant messages** — the edge function formats ranked hits as markdown; we render with `react-markdown`.
+- **Async jobs, non-streaming client** — `chat-proxy` returns `202` + `job_id` and completes the turn in `EdgeRuntime.waitUntil`; the client uses Realtime / `chat-job-events` as today.
 
 ---
 
@@ -308,4 +301,4 @@ cd C:\Code\book-of-heaven\frontend
 npm run dev
 ```
 
-Also open AnythingLLM desktop app.
+Ensure `document_chunks` is populated (run `index_supabase.py` in the splitter repos) and `OPENAI_API_KEY` is set for Edge Functions.
