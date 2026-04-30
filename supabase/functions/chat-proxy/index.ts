@@ -3,7 +3,6 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { embedQuery, searchDocumentChunks } from '../_shared/pgvector_search.ts'
 import {
-  type SearchHit,
   hitsToReplyMarkdown,
   hitsToSources,
   type AnythingLlmSource,
@@ -32,7 +31,6 @@ const TITLE_CHAT_TIMEOUT_MS = 30_000
 const DEFAULT_MATCH_COUNT = 12
 const DEFAULT_RETRIEVAL_MODE: RetrievalMode =
   (Deno.env.get('DEFAULT_RETRIEVAL_MODE') as RetrievalMode | null) ?? 'hybrid'
-const DIRECT_COMPLETION_MODEL = Deno.env.get('DIRECT_COMPLETION_MODEL') ?? 'gpt-4.1-mini'
 
 function workspaceSlugFor(source: AssistantSource): string {
   if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
@@ -151,68 +149,6 @@ function parseDefaultRetrievalMode(): RetrievalMode {
   return parsed ?? 'hybrid'
 }
 
-function formatPgvectorContext(hits: SearchHit[]): string {
-  if (hits.length === 0) return '(No pgvector matches found.)'
-  return hits
-    .map((hit, index) => {
-      const title = hit.citation_label ?? `Chunk ${index + 1}`
-      return `[Source ${index + 1}: ${title}]\n${hit.chunk_text}`
-    })
-    .join('\n\n---\n\n')
-}
-
-function buildHybridMessage(userMessage: string, hits: SearchHit[]): string {
-  return (
-    'Use the following additional retrieved context when answering.\n' +
-    'Prefer direct source evidence and cite it when possible.\n' +
-    'If the context is insufficient, say so.\n\n' +
-    '[PGVECTOR_CONTEXT]\n' +
-    `${formatPgvectorContext(hits)}\n` +
-    '[/PGVECTOR_CONTEXT]\n\n' +
-    `User question:\n${userMessage}`
-  )
-}
-
-async function directModelAnswerFromPgvector(
-  message: string,
-  hits: SearchHit[],
-): Promise<string> {
-  const key = Deno.env.get('OPENAI_API_KEY')?.trim()
-  if (!key) throw new Error('OPENAI_API_KEY is required for pgvector mode')
-  const context = formatPgvectorContext(hits)
-  const prompt =
-    'Answer only from the provided context. ' +
-    'If context is insufficient, state what is missing.\n\n' +
-    `[CONTEXT]\n${context}\n[/CONTEXT]\n\n` +
-    `Question:\n${message}`
-
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: DIRECT_COMPLETION_MODEL,
-      temperature: 0.2,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-  const raw = await res.text()
-  if (!res.ok) {
-    console.error('directModelAnswerFromPgvector error', res.status, raw)
-    throw new Error(`Direct completion failed (${res.status})`)
-  }
-  const parsed = JSON.parse(raw) as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-  const content = parsed.choices?.[0]?.message?.content?.trim()
-  if (!content) {
-    return hitsToReplyMarkdown(hits, 'text', message)
-  }
-  return content
-}
-
 function normalizeTitle(raw: string): string | null {
   let t = raw
     .replace(/\[Book of Heaven[^\]]*\]/gi, '')
@@ -292,9 +228,17 @@ type JobResult = {
   title: string | null
   replies: Array<{
     source: AssistantSource
+    retrieval_mode: Exclude<RetrievalMode, 'hybrid'>
     reply: string
     sources: AnythingLlmSource[] | null
   }>
+}
+
+type AssistantReply = {
+  ws: AssistantSource
+  retrieval_mode: Exclude<RetrievalMode, 'hybrid'>
+  reply: string
+  sources: AnythingLlmSource[] | null
 }
 
 async function runChatTurn(
@@ -397,7 +341,10 @@ async function runChatTurn(
     console.log(
       `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; thread: ${threadId}`,
     )
-    const mainResultsPromise = Promise.all(workspaces.map(async (ws) => {
+    const queryEmbeddingPromise =
+      retrievalMode === 'anythingllm' ? null : embedQuery(message.trim())
+
+    const mainResultsPromise = Promise.all(workspaces.map(async (ws): Promise<AssistantReply[]> => {
       const slug = workspaceSlugFor(ws)
       if (retrievalMode === 'anythingllm') {
         const result = await anythingLlmChat(composedMessage, slug, {
@@ -405,10 +352,15 @@ async function runChatTurn(
           mode: 'query',
           timeoutMs: MAIN_CHAT_TIMEOUT_MS,
         })
-        return { ws, reply: pickReplyText(result, slug), sources: result.sources && result.sources.length > 0 ? result.sources : null }
+        return [{
+          ws,
+          retrieval_mode: 'anythingllm',
+          reply: pickReplyText(result, slug),
+          sources: result.sources && result.sources.length > 0 ? result.sources : null,
+        }]
       }
 
-      const queryEmbedding = await embedQuery(message.trim())
+      const queryEmbedding = await queryEmbeddingPromise!
       const hits = await searchDocumentChunks(
         supabase,
         queryEmbedding,
@@ -418,27 +370,37 @@ async function runChatTurn(
       )
       console.log(`pgvector chunks retrieved: ${hits.length}; workspace: ${ws}`)
       const pgSources = hitsToSources(hits)
+      const pgReply = hitsToReplyMarkdown(hits, ws, message)
 
       if (retrievalMode === 'pgvector') {
-        const reply = await directModelAnswerFromPgvector(message, hits)
-        return { ws, reply, sources: pgSources }
+        return [{
+          ws,
+          retrieval_mode: 'pgvector',
+          reply: pgReply,
+          sources: pgSources,
+        }]
       }
 
-      let hybridMessage = composedMessage
       try {
-        hybridMessage = buildHybridMessage(composedMessage, hits)
-      } catch (err) {
-        console.warn('Hybrid context formatting failed; fallback to AnythingLLM-only message', err)
-      }
-      try {
-        const result = await anythingLlmChat(hybridMessage, slug, {
+        const result = await anythingLlmChat(composedMessage, slug, {
           sessionId: threadId,
           mode: 'query',
           timeoutMs: MAIN_CHAT_TIMEOUT_MS,
         })
-        const llmSources =
-          result.sources && result.sources.length > 0 ? result.sources : null
-        return { ws, reply: pickReplyText(result, slug), sources: pgSources ?? llmSources }
+        return [
+          {
+            ws,
+            retrieval_mode: 'pgvector',
+            reply: pgReply,
+            sources: pgSources,
+          },
+          {
+            ws,
+            retrieval_mode: 'anythingllm',
+            reply: pickReplyText(result, slug),
+            sources: result.sources && result.sources.length > 0 ? result.sources : null,
+          },
+        ]
       } catch (err) {
         console.warn(
           `Hybrid AnythingLLM call failed for ${ws}; propagating error`,
@@ -446,14 +408,14 @@ async function runChatTurn(
         )
         throw err
       }
-    }))
+    })).then((rows) => rows.flat())
 
     const [mainResults, title] = await Promise.all([
       mainResultsPromise,
       needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
     ])
 
-    const assistantRows = mainResults.map(({ ws, reply, sources }) => {
+    const assistantRows = mainResults.map(({ ws, retrieval_mode, reply, sources }) => {
       return {
         row: {
           user_id: userId,
@@ -462,10 +424,11 @@ async function runChatTurn(
           thread_id: threadId,
           turn_id: turnId,
           source: ws,
-          retrieval_mode: retrievalMode,
+          retrieval_mode,
           sources,
         },
         reply,
+        retrieval_mode,
         ws,
         sources,
       }
@@ -498,6 +461,7 @@ async function runChatTurn(
       title: title ?? null,
       replies: assistantRows.map((r) => ({
         source: r.ws,
+        retrieval_mode: r.retrieval_mode,
         reply: r.reply,
         sources: r.sources,
       })),

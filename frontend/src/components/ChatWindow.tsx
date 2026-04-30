@@ -36,6 +36,7 @@ import './ChatWindow.css'
 // single-source. Legacy rows (pre-migration 007) carry null.
 type UserSource = Source
 type AssistantSource = 'text' | 'narrated'
+type AssistantRetrievalMode = 'anythingllm' | 'pgvector'
 
 interface Message {
   id: string
@@ -143,6 +144,21 @@ function sourceSectionTitle(s: AssistantSource): string {
     : 'Francis Hogan Book of Heaven Narration'
 }
 
+function retrievalModeLabel(mode: Message['retrieval_mode']): string | null {
+  if (mode === 'pgvector') return 'pgvector'
+  if (mode === 'anythingllm') return 'AnythingLLM'
+  return null
+}
+
+function assistantPanelTitle(message: Message): string {
+  const sourceLabel =
+    message.source === 'text' || message.source === 'narrated'
+      ? sourceSectionTitle(message.source)
+      : 'Reply'
+  const modeLabel = retrievalModeLabel(message.retrieval_mode)
+  return modeLabel ? `${sourceLabel} - ${modeLabel}` : sourceLabel
+}
+
 const BOTH_LAYOUT_OPTIONS: {
   value: BothReplyLayout
   label: string
@@ -219,10 +235,7 @@ function SplitTurnTabs({
     <div className="chat-turn-tabs">
       <div className="chat-tab-strip">
         {assistants.map((m, i) => {
-          const title =
-            m.source === 'text' || m.source === 'narrated'
-              ? sourceSectionTitle(m.source)
-              : 'Reply'
+          const title = assistantPanelTitle(m)
           const accentKey = m.source === 'text' ? 'text' : 'narrated'
           return (
             <button
@@ -299,13 +312,23 @@ function AssistantBubble({
     message.source === 'text' || message.source === 'narrated'
       ? message.source
       : null
+  const chipRetrievalMode = retrievalModeLabel(message.retrieval_mode)
   return (
     <div className="chat-bubble chat-bubble-assistant">
-      {showChip && chipSource ? (
-        <div
-          className={`chat-bubble-source-chip chat-bubble-source-chip-${chipSource}`}
-        >
-          {sourceSectionTitle(chipSource)}
+      {showChip ? (
+        <div className="chat-bubble-chip-row">
+          {chipSource ? (
+            <div
+              className={`chat-bubble-source-chip chat-bubble-source-chip-${chipSource}`}
+            >
+              {sourceSectionTitle(chipSource)}
+            </div>
+          ) : null}
+          {chipRetrievalMode ? (
+            <div className="chat-bubble-source-chip chat-bubble-source-chip-retrieval">
+              {chipRetrievalMode}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <AssistantMarkdown
@@ -379,9 +402,13 @@ function groupIntoTurns(messages: Message[]): Turn[] {
   for (const t of turns) {
     if (t.assistants.length > 1) {
       t.assistants.sort((a, b) => {
-        const rank = (s: Message['source']) =>
+        const sourceRank = (s: Message['source']) =>
           s === 'text' ? 0 : s === 'narrated' ? 1 : 2
-        return rank(a.source) - rank(b.source)
+        const modeRank = (m: Message['retrieval_mode']) =>
+          m === 'pgvector' ? 0 : m === 'anythingllm' ? 1 : 2
+        const bySource = sourceRank(a.source) - sourceRank(b.source)
+        if (bySource !== 0) return bySource
+        return modeRank(a.retrieval_mode) - modeRank(b.retrieval_mode)
       })
     }
   }
@@ -584,7 +611,7 @@ export function ChatWindow({
             if (processedTurnIdsRef.current.has(tid)) return
             const { data: urow } = await supabase
               .from('chat_messages')
-              .select('source')
+              .select('source, retrieval_mode')
               .eq('user_id', user.id)
               .eq('thread_id', threadId)
               .eq('turn_id', tid)
@@ -594,8 +621,10 @@ export function ChatWindow({
             const userSource = urow?.source as
               | UserSource
               | undefined
-            const expectAssistants =
-              userSource === 'both' ? 2 : userSource ? 1 : 1
+            const userMode = urow?.retrieval_mode as RetrievalMode | undefined
+            const sourceFanout = userSource === 'both' ? 2 : 1
+            const retrievalFanout = userMode === 'hybrid' ? 2 : 1
+            const expectAssistants = sourceFanout * retrievalFanout
             const { data, error } = await supabase
               .from('chat_messages')
               .select('*')
@@ -695,6 +724,7 @@ export function ChatWindow({
       const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
       const parsedReplies: Array<{
         source: AssistantSource
+        retrieval_mode: AssistantRetrievalMode | null
         reply: string
         sources: AnythingLlmSource[] | null
       }> = []
@@ -703,6 +733,10 @@ export function ChatWindow({
         const rec = r as Record<string, unknown>
         const s = rec.source
         if (s !== 'text' && s !== 'narrated') continue
+        const retrieval_mode =
+          rec.retrieval_mode === 'anythingllm' || rec.retrieval_mode === 'pgvector'
+            ? rec.retrieval_mode
+            : null
         const replyRaw = rec.reply
         const replyText =
           typeof replyRaw === 'string'
@@ -713,7 +747,7 @@ export function ChatWindow({
         const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
           ? (rec.sources as AnythingLlmSource[])
           : null
-        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal })
+        parsedReplies.push({ source: s, retrieval_mode, reply: replyText, sources: sourcesVal })
       }
 
       let assistantMessages: Message[]
@@ -726,6 +760,7 @@ export function ChatWindow({
           created_at: new Date(tsBase + i).toISOString(),
           sources: r.sources,
           source: r.source,
+          retrieval_mode: r.retrieval_mode,
           turn_id: submitTurnId,
         }))
       } else {

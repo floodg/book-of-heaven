@@ -267,6 +267,14 @@
   max-width: 100%;
 }
 
+.chat-bubble-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .chat-bubble-source-chip-text {
   background: #f5ead4;
   color: #7a3509;
@@ -277,6 +285,12 @@
   background: #eaf1e2;
   color: #3f5a2a;
   border-color: #cdd9bc;
+}
+
+.chat-bubble-source-chip-retrieval {
+  background: #ece7ff;
+  color: #43337a;
+  border-color: #d7ceff;
 }
 
 /* Group container for a single user-question + assistant-reply(s) pair.

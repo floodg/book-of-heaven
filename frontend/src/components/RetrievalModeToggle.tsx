@@ -14,12 +14,12 @@ const OPTIONS: { value: RetrievalMode; label: string; title: string }[] = [
   {
     value: 'pgvector',
     label: 'pgvector',
-    title: 'Use Supabase pgvector retrieval + direct model answer',
+    title: 'Use Supabase pgvector retrieval and show raw semantic hits',
   },
   {
     value: 'hybrid',
     label: 'Hybrid',
-    title: 'Use pgvector context plus the existing AnythingLLM chat flow',
+    title: 'Run pgvector raw hits and AnythingLLM independently',
   },
 ]
 
