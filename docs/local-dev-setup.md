@@ -257,6 +257,9 @@ ANYTHINGLLM_KEY=your-anythingllm-api-key-here
 ANYTHINGLLM_WORKSPACE=book-of-heaven-narrated
 SUPABASE_URL=http://host.docker.internal:54331
 SERVICE_ROLE_KEY=sb_secret_...                 # from `supabase status`
+OPENAI_API_KEY=sk-...
+DEFAULT_RETRIEVAL_MODE=hybrid
+DIRECT_COMPLETION_MODEL=gpt-4.1-mini
 ```
 
 > **Note 1:** Use `host.docker.internal` instead of `localhost` — this lets the Edge Function container reach AnythingLLM running on your Windows host machine.

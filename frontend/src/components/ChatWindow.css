@@ -200,6 +200,39 @@
   text-decoration: underline;
 }
 
+.chat-source-list {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e7d5b3;
+  font-size: 12px;
+}
+
+.chat-source-list-title {
+  font-weight: 700;
+  color: #4a2e18;
+  margin-bottom: 6px;
+}
+
+.chat-source-list ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-source-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-source-score {
+  color: #7a3509;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .chat-bubble-user {
   background: #92400e;
   color: #ffffff;

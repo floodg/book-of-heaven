@@ -1,6 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { embedQuery, searchDocumentChunks } from '../_shared/pgvector_search.ts'
+import {
+  type SearchHit,
+  hitsToReplyMarkdown,
+  hitsToSources,
+  type AnythingLlmSource,
+  type AssistantSource,
+} from '../_shared/format_hits.ts'
 
 declare const EdgeRuntime: {
   waitUntil(promise: PromiseLike<unknown>): void
@@ -18,23 +26,17 @@ const jsonHeaders = {
 }
 
 type Source = 'text' | 'narrated' | 'both'
-type AssistantSource = 'text' | 'narrated'
+type RetrievalMode = 'anythingllm' | 'pgvector' | 'hybrid'
 const MAIN_CHAT_TIMEOUT_MS = 75_000
 const TITLE_CHAT_TIMEOUT_MS = 30_000
+const DEFAULT_MATCH_COUNT = 12
+const DEFAULT_RETRIEVAL_MODE: RetrievalMode =
+  (Deno.env.get('DEFAULT_RETRIEVAL_MODE') as RetrievalMode | null) ?? 'hybrid'
+const DIRECT_COMPLETION_MODEL = Deno.env.get('DIRECT_COMPLETION_MODEL') ?? 'gpt-4.1-mini'
 
 function workspaceSlugFor(source: AssistantSource): string {
   if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
   return Deno.env.get('ANYTHINGLLM_WORKSPACE_NARRATED')!
-}
-
-export interface AnythingLlmSource {
-  title?: string
-  chunkSource?: string
-  text?: string
-  score?: number
-  _distance?: number
-  metadata?: Record<string, unknown>
-  [key: string]: unknown
 }
 
 async function anythingLlmChat(
@@ -139,6 +141,78 @@ async function anythingLlmChat(
   }
 }
 
+function retrievalModeFromUnknown(value: unknown): RetrievalMode | null {
+  if (value === 'anythingllm' || value === 'pgvector' || value === 'hybrid') return value
+  return null
+}
+
+function parseDefaultRetrievalMode(): RetrievalMode {
+  const parsed = retrievalModeFromUnknown(DEFAULT_RETRIEVAL_MODE)
+  return parsed ?? 'hybrid'
+}
+
+function formatPgvectorContext(hits: SearchHit[]): string {
+  if (hits.length === 0) return '(No pgvector matches found.)'
+  return hits
+    .map((hit, index) => {
+      const title = hit.citation_label ?? `Chunk ${index + 1}`
+      return `[Source ${index + 1}: ${title}]\n${hit.chunk_text}`
+    })
+    .join('\n\n---\n\n')
+}
+
+function buildHybridMessage(userMessage: string, hits: SearchHit[]): string {
+  return (
+    'Use the following additional retrieved context when answering.\n' +
+    'Prefer direct source evidence and cite it when possible.\n' +
+    'If the context is insufficient, say so.\n\n' +
+    '[PGVECTOR_CONTEXT]\n' +
+    `${formatPgvectorContext(hits)}\n` +
+    '[/PGVECTOR_CONTEXT]\n\n' +
+    `User question:\n${userMessage}`
+  )
+}
+
+async function directModelAnswerFromPgvector(
+  message: string,
+  hits: SearchHit[],
+): Promise<string> {
+  const key = Deno.env.get('OPENAI_API_KEY')?.trim()
+  if (!key) throw new Error('OPENAI_API_KEY is required for pgvector mode')
+  const context = formatPgvectorContext(hits)
+  const prompt =
+    'Answer only from the provided context. ' +
+    'If context is insufficient, state what is missing.\n\n' +
+    `[CONTEXT]\n${context}\n[/CONTEXT]\n\n` +
+    `Question:\n${message}`
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: DIRECT_COMPLETION_MODEL,
+      temperature: 0.2,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  const raw = await res.text()
+  if (!res.ok) {
+    console.error('directModelAnswerFromPgvector error', res.status, raw)
+    throw new Error(`Direct completion failed (${res.status})`)
+  }
+  const parsed = JSON.parse(raw) as {
+    choices?: Array<{ message?: { content?: string } }>
+  }
+  const content = parsed.choices?.[0]?.message?.content?.trim()
+  if (!content) {
+    return hitsToReplyMarkdown(hits, 'text', message)
+  }
+  return content
+}
+
 function normalizeTitle(raw: string): string | null {
   let t = raw
     .replace(/\[Book of Heaven[^\]]*\]/gi, '')
@@ -214,6 +288,7 @@ function pickReplyText(
 type JobResult = {
   thread_id: string
   turn_id: string
+  retrieval_mode: RetrievalMode
   title: string | null
   replies: Array<{
     source: AssistantSource
@@ -231,10 +306,20 @@ async function runChatTurn(
     threadId: string
     turnId: string
     source: Source
+    retrievalMode: RetrievalMode
     incomingProjectId: string | null
   },
 ): Promise<void> {
-  const { userId, jobId, message, threadId, turnId, source, incomingProjectId } = ctx
+  const {
+    userId,
+    jobId,
+    message,
+    threadId,
+    turnId,
+    source,
+    retrievalMode,
+    incomingProjectId,
+  } = ctx
   const nowIso = new Date().toISOString()
   const { error: markProcErr } = await supabase
     .from('chat_turn_jobs')
@@ -249,6 +334,7 @@ async function runChatTurn(
     const upsertPayload: Record<string, unknown> = {
       thread_id: threadId,
       user_id: userId,
+      retrieval_mode: retrievalMode,
     }
     if (incomingProjectId) upsertPayload.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -308,27 +394,66 @@ async function runChatTurn(
       : message
 
     const workspaces = workspacesFor(source)
-    const mainResultsPromise = Promise.all(
-      workspaces.map(async (ws) => {
-        const slug = workspaceSlugFor(ws)
+    console.log(
+      `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; thread: ${threadId}`,
+    )
+    const mainResultsPromise = Promise.all(workspaces.map(async (ws) => {
+      const slug = workspaceSlugFor(ws)
+      if (retrievalMode === 'anythingllm') {
         const result = await anythingLlmChat(composedMessage, slug, {
           sessionId: threadId,
           mode: 'query',
           timeoutMs: MAIN_CHAT_TIMEOUT_MS,
         })
-        return { ws, slug, result }
-      }),
-    )
+        return { ws, reply: pickReplyText(result, slug), sources: result.sources && result.sources.length > 0 ? result.sources : null }
+      }
+
+      const queryEmbedding = await embedQuery(message.trim())
+      const hits = await searchDocumentChunks(
+        supabase,
+        queryEmbedding,
+        ws,
+        DEFAULT_MATCH_COUNT,
+        null,
+      )
+      console.log(`pgvector chunks retrieved: ${hits.length}; workspace: ${ws}`)
+      const pgSources = hitsToSources(hits)
+
+      if (retrievalMode === 'pgvector') {
+        const reply = await directModelAnswerFromPgvector(message, hits)
+        return { ws, reply, sources: pgSources }
+      }
+
+      let hybridMessage = composedMessage
+      try {
+        hybridMessage = buildHybridMessage(composedMessage, hits)
+      } catch (err) {
+        console.warn('Hybrid context formatting failed; fallback to AnythingLLM-only message', err)
+      }
+      try {
+        const result = await anythingLlmChat(hybridMessage, slug, {
+          sessionId: threadId,
+          mode: 'query',
+          timeoutMs: MAIN_CHAT_TIMEOUT_MS,
+        })
+        const llmSources =
+          result.sources && result.sources.length > 0 ? result.sources : null
+        return { ws, reply: pickReplyText(result, slug), sources: pgSources ?? llmSources }
+      } catch (err) {
+        console.warn(
+          `Hybrid AnythingLLM call failed for ${ws}; propagating error`,
+          err,
+        )
+        throw err
+      }
+    }))
 
     const [mainResults, title] = await Promise.all([
       mainResultsPromise,
       needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
     ])
 
-    const assistantRows = mainResults.map(({ ws, slug, result }) => {
-      const reply = pickReplyText(result, slug)
-      const sourcesForDb =
-        result.sources && result.sources.length > 0 ? result.sources : null
+    const assistantRows = mainResults.map(({ ws, reply, sources }) => {
       return {
         row: {
           user_id: userId,
@@ -337,11 +462,12 @@ async function runChatTurn(
           thread_id: threadId,
           turn_id: turnId,
           source: ws,
-          sources: sourcesForDb,
+          retrieval_mode: retrievalMode,
+          sources,
         },
         reply,
         ws,
-        sources: sourcesForDb,
+        sources,
       }
     })
 
@@ -368,6 +494,7 @@ async function runChatTurn(
     const resultPayload: JobResult = {
       thread_id: threadId,
       turn_id: turnId,
+      retrieval_mode: retrievalMode,
       title: title ?? null,
       replies: assistantRows.map((r) => ({
         source: r.ws,
@@ -414,6 +541,7 @@ async function runChatTurn(
         thread_id: threadId,
         turn_id: turnId,
         source: errSource,
+        retrieval_mode: retrievalMode,
         sources: null,
       })
     if (failBubbleErr) {
@@ -464,6 +592,7 @@ serve(async (req) => {
       project_id?: unknown
       source?: unknown
       turn_id?: unknown
+      retrievalMode?: unknown
     }
     try {
       body = await req.json()
@@ -516,6 +645,16 @@ serve(async (req) => {
       )
     }
     const source: Source = sourceRaw
+    const bodyRetrievalMode = retrievalModeFromUnknown(body?.retrievalMode)
+    if (body?.retrievalMode != null && !bodyRetrievalMode) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid retrievalMode (expected 'anythingllm', 'pgvector', or 'hybrid')",
+        }),
+        { status: 400, headers: jsonHeaders },
+      )
+    }
+    const retrievalMode = bodyRetrievalMode ?? parseDefaultRetrievalMode()
 
     const projectIdRaw = body?.project_id
     let incomingProjectId: string | null = null
@@ -581,6 +720,7 @@ serve(async (req) => {
         thread_id: threadId,
         turn_id: turnId,
         source,
+        retrieval_mode: retrievalMode,
       })
 
     if (insertUserError) {
@@ -620,6 +760,7 @@ serve(async (req) => {
     const upsertPayload2: Record<string, unknown> = {
       thread_id: threadId,
       user_id: user.id,
+      retrieval_mode: retrievalMode,
     }
     if (incomingProjectId) upsertPayload2.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -647,6 +788,7 @@ serve(async (req) => {
         thread_id: threadId,
         turn_id: turnId,
         source,
+        retrieval_mode: retrievalMode,
         project_id: jobProjectId,
         status: 'pending',
       })
@@ -696,6 +838,7 @@ serve(async (req) => {
         threadId,
         turnId,
         source,
+        retrievalMode,
         incomingProjectId,
       }),
     )
@@ -705,6 +848,7 @@ serve(async (req) => {
         job_id: jobId,
         thread_id: threadId,
         turn_id: turnId,
+        retrieval_mode: retrievalMode,
         title: null,
         status: 'accepted',
       }),

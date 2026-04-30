@@ -19,11 +19,16 @@ import type { AnythingLlmSource } from '../lib/sources'
 import { useYoutubeMap } from '../lib/YoutubeMapContext'
 import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import { SourceToggle } from './SourceToggle'
+import { RetrievalModeToggle } from './RetrievalModeToggle'
 import {
   useBothReplyLayout,
   type BothReplyLayout,
 } from '../lib/bothReplyLayout'
 import { usePreferredSource, type Source } from '../lib/source'
+import {
+  usePreferredRetrievalMode,
+  type RetrievalMode,
+} from '../lib/retrievalMode'
 import './ChatWindow.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
@@ -47,6 +52,7 @@ interface Message {
   // Groups a user row with its 1-2 assistant replies. Null for pre-007 rows;
   // those keep rendering one-bubble-per-row as they did before.
   turn_id?: string | null
+  retrieval_mode?: RetrievalMode | null
 }
 
 // Module-level cache of "messages I just rendered locally for thread X".
@@ -308,6 +314,25 @@ function AssistantBubble({
         youtubeMap={youtubeMap}
         pdfPages={pdfPages}
       />
+      {message.sources && message.sources.length > 0 ? (
+        <div className="chat-source-list">
+          <div className="chat-source-list-title">Sources</div>
+          <ol>
+            {message.sources.slice(0, 8).map((src, idx) => {
+              const score = typeof src.score === 'number'
+                ? `${Math.round(src.score * 1000) / 10}%`
+                : null
+              const label = src.title ?? src.chunkSource ?? `Source ${idx + 1}`
+              return (
+                <li key={`${src.chunkSource ?? 'src'}-${idx}`}>
+                  <span>{label}</span>
+                  {score ? <span className="chat-source-score">{score}</span> : null}
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -409,6 +434,7 @@ export function ChatWindow({
     string | null
   >(null)
   const [source, setSource] = usePreferredSource()
+  const [retrievalMode, setRetrievalMode] = usePreferredRetrievalMode()
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const youtubeMap = useYoutubeMap()
@@ -658,6 +684,7 @@ export function ChatWindow({
       thread_id: submitThreadId,
       turn_id: submitTurnId,
       source: effectiveSource,
+      retrievalMode,
     }
     if (projectId) body.project_id = projectId
 
@@ -1005,6 +1032,11 @@ export function ChatWindow({
         </div>
         <div className="chat-input-bar-toggles">
           <SourceToggle value={source} onChange={setSource} disabled={loading} />
+          <RetrievalModeToggle
+            value={retrievalMode}
+            onChange={setRetrievalMode}
+            disabled={loading}
+          />
           {showBothLayoutToggle ? (
             <BothLayoutToggle
               value={bothReplyLayout}
