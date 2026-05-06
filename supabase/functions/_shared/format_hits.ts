@@ -1,3 +1,8 @@
+// Single source: same JSON the SPA loads from /data/youtube-map.json (bundled at deploy).
+import youtubeMapFallback from '../../../frontend/public/data/youtube-map.json' with {
+  type: 'json',
+}
+
 export type AssistantSource = 'text' | 'narrated'
 
 export type SearchHit = {
@@ -70,8 +75,22 @@ function buildPdfHref(hit: SearchHit): string {
   return query ? `/pdf/${hit.volume}?${query}` : `/pdf/${hit.volume}`
 }
 
+/** DB rows often omit youtube_video_id; fall back to the static composite-key map (same as the SPA). */
+export function resolveYoutubeVideoId(hit: SearchHit): string | null {
+  const fromDb = hit.youtube_video_id?.trim()
+  if (fromDb) return fromDb
+  if (hit.source_type !== 'narrated') return null
+  const tn = hit.transcript_number
+  if (tn == null || !Number.isFinite(tn) || tn <= 0) return null
+  const key = `${hit.volume}:${tn}`
+  const map = youtubeMapFallback as Record<string, string>
+  const fromMap = map[key]?.trim()
+  if (fromMap) return fromMap
+  return null
+}
+
 function buildYoutubeHref(hit: SearchHit): string | null {
-  const videoId = hit.youtube_video_id?.trim()
+  const videoId = resolveYoutubeVideoId(hit)
   if (!videoId) return null
   if (hit.time_start_sec != null && Number.isFinite(hit.time_start_sec) && hit.time_start_sec >= 0) {
     return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&t=${Math.floor(hit.time_start_sec)}s`
@@ -183,13 +202,20 @@ export function hitsToReplyMarkdown(
     const sim = formatSimilarityMatch(hit.similarity)
     const clipped = excerptForSearchHit(hit.chunk_text, queryHint ?? undefined, MARKDOWN_HIT_EXCERPT_MAX)
     const isNarrated = hit.source_type === 'narrated'
-    const sourceIcon = isNarrated ? '🎥' : '📄'
+    // Placeholder image URLs — SPA maps these to SVG in ChatWindow (not real fetches).
+    const sourceIcon = isNarrated
+      ? '![Narrated audio](/__md__/semantic-hit-narrated) '
+      : '![Book text](/__md__/semantic-hit-book) '
     const sourceLabel = isNarrated ? 'Narrated video' : 'Book PDF'
     const pdfHref = buildPdfHref(hit)
     const ytHref = buildYoutubeHref(hit)
     lines.push(`${i + 1}. ${sourceIcon} **${sourceLabel}** ${cite} _(${sim})_`)
     lines.push('')
-    lines.push(ytHref ? `[Go to video →](${ytHref}) · [Open PDF →](${pdfHref})` : `[Open PDF →](${pdfHref})`)
+    if (ytHref) {
+      lines.push(`[Go to video →](${ytHref}) · [Open PDF →](${pdfHref})`)
+    } else {
+      lines.push(`[Open PDF →](${pdfHref})`)
+    }
     lines.push('')
     lines.push(`> ${clipped}`)
     lines.push('')
@@ -199,20 +225,23 @@ export function hitsToReplyMarkdown(
 
 export function hitsToSources(hits: SearchHit[]): AnythingLlmSource[] | null {
   if (hits.length === 0) return null
-  return hits.map((hit) => ({
-    title: hit.citation_label ?? citationForHit(hit),
-    chunkSource: hit.id,
-    text: hit.chunk_text,
-    score: hit.similarity,
-    metadata: {
-      ...(hit.metadata ?? {}),
-      chunk_id: hit.id,
-      source_type: hit.source_type,
-      volume: hit.volume,
-      transcript_number: hit.transcript_number,
-      time_start_sec: hit.time_start_sec,
-      youtube_video_id: hit.youtube_video_id,
-      similarity: hit.similarity,
-    },
-  }))
+  return hits.map((hit) => {
+    const ytId = resolveYoutubeVideoId(hit)
+    return {
+      title: hit.citation_label ?? citationForHit(hit),
+      chunkSource: hit.id,
+      text: hit.chunk_text,
+      score: hit.similarity,
+      metadata: {
+        ...(hit.metadata ?? {}),
+        chunk_id: hit.id,
+        source_type: hit.source_type,
+        volume: hit.volume,
+        transcript_number: hit.transcript_number,
+        time_start_sec: hit.time_start_sec,
+        youtube_video_id: ytId ?? hit.youtube_video_id,
+        similarity: hit.similarity,
+      },
+    }
+  })
 }

@@ -138,6 +138,19 @@
   white-space: normal;
 }
 
+.semantic-hit-icon-inline {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.35em;
+  position: relative;
+  top: -0.06em;
+  color: #5b4230;
+}
+
+.semantic-hit-icon-inline svg {
+  display: block;
+}
+
 .chat-bubble-markdown > :first-child {
   margin-top: 0;
 }
@@ -198,6 +211,10 @@
 .chat-bubble-markdown a {
   color: #92400e;
   text-decoration: underline;
+}
+
+.chat-bubble-markdown a.citation-badge {
+  text-decoration: none;
 }
 
 .chat-source-list {

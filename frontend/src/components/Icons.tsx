@@ -168,6 +168,17 @@ export function IconFolderMove({ size, ...rest }: IconProps) {
   )
 }
 
+// Circle-plus-play glyph for pgvector semantic hit lines (distinct from
+// IconYoutube on citation pills, which uses a rounded-rectangle tile).
+export function IconPlayCircle({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 15, rest)} strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <polygon points="10 8 10 16 17 12" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 // Document icon used on citation pills to open the matching volume PDF at
 // the cited page.
 export function IconPdf({ size, ...rest }: IconProps) {
@@ -181,8 +192,8 @@ export function IconPdf({ size, ...rest }: IconProps) {
   )
 }
 
-// Play-in-rounded-square icon used on citation pills to open the YouTube
-// video for that transcript number at the cited timestamp.
+// Rounded rectangle + play triangle — citation-pill link to open the narrated
+// clip on YouTube at the citation timestamp (not the circle play above).
 export function IconYoutube({ size, ...rest }: IconProps) {
   return (
     <svg {...baseProps(size ?? 12, rest)}>

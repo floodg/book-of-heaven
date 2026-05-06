@@ -14,7 +14,7 @@ import type { Components } from 'react-markdown'
 import { supabase } from '../lib/supabase'
 import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
-import { IconCopy, IconFolder } from './Icons'
+import { IconCopy, IconFolder, IconPdf, IconPlayCircle } from './Icons'
 import type { AnythingLlmSource } from '../lib/sources'
 import { useYoutubeMap } from '../lib/YoutubeMapContext'
 import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
@@ -82,6 +82,23 @@ const FRESH_THREAD_CACHE_TTL_MS = 10_000
 const newChatPendingCache = new Map<string, FreshThreadCacheEntry>()
 const NEW_CHAT_PENDING_TTL_MS = 15 * 60 * 1000
 
+/** Must match placeholders emitted by `hitsToReplyMarkdown` in format_hits.ts. */
+const MD_SEMANTIC_HIT_NARRATED = '/__md__/semantic-hit-narrated'
+const MD_SEMANTIC_HIT_BOOK = '/__md__/semantic-hit-book'
+
+/** Replace legacy emoji markers and map placeholder imgs to SVG (see `img` in makeMarkdownComponents). */
+function normalizeSemanticSearchMarkdown(md: string): string {
+  return md
+    .replace(
+      /^(\s*\d+)\.\s*🎥\s+/gm,
+      `$1. ![Narrated audio](${MD_SEMANTIC_HIT_NARRATED}) `,
+    )
+    .replace(
+      /^(\s*\d+)\.\s*📄\s+/gm,
+      `$1. ![Book text](${MD_SEMANTIC_HIT_BOOK}) `,
+    )
+}
+
 // highlightCitations recursively descends into nested children, so we only
 // need to apply it at block level. Applying it at both block and inline
 // levels (e.g. strong, em) causes double-wrapping and nested pills.
@@ -110,6 +127,29 @@ function makeMarkdownComponents(ctx: {
         {children}
       </a>
     ),
+    img: ({ src, alt }) => {
+      if (src === MD_SEMANTIC_HIT_NARRATED || src === `${MD_SEMANTIC_HIT_NARRATED}/`) {
+        return (
+          <span
+            className="semantic-hit-icon-inline semantic-hit-icon-inline--narrated"
+            aria-label={alt || 'Narrated audio match'}
+          >
+            <IconPlayCircle size={15} />
+          </span>
+        )
+      }
+      if (src === MD_SEMANTIC_HIT_BOOK || src === `${MD_SEMANTIC_HIT_BOOK}/`) {
+        return (
+          <span
+            className="semantic-hit-icon-inline semantic-hit-icon-inline--book"
+            aria-label={alt || 'Book text match'}
+          >
+            <IconPdf size={14} strokeWidth={2} />
+          </span>
+        )
+      }
+      return <img src={src ?? ''} alt={alt ?? ''} />
+    },
   }
 }
 
@@ -127,13 +167,14 @@ function AssistantMarkdown({
   youtubeMap: Record<string, string>
   pdfPages: PdfPagesIndex
 }) {
+  const normalized = useMemo(() => normalizeSemanticSearchMarkdown(content), [content])
   const components = useMemo(
     () => makeMarkdownComponents({ sources, youtubeMap, pdfPages }),
     [sources, youtubeMap, pdfPages],
   )
   return (
     <div className="chat-bubble-markdown">
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown components={components}>{normalized}</ReactMarkdown>
     </div>
   )
 }
