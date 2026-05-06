@@ -15,6 +15,9 @@ ANYTHINGLLM_KEY        AnythingLLM API key
 ANYTHINGLLM_WORKSPACE  workspace slug e.g. book-of-heaven-narrated
 SUPABASE_URL           Supabase Kong URL, e.g. http://host.docker.internal:54331
 SERVICE_ROLE_KEY       sb_secret_... key from `supabase status`
+OPENAI_API_KEY         required for pgvector embeddings and pgvector-only answers
+DEFAULT_RETRIEVAL_MODE defaults to hybrid if request omits retrievalMode
+DIRECT_COMPLETION_MODEL model used for retrievalMode=pgvector direct answers
 ```
 
 > **Note:** the env var is `SERVICE_ROLE_KEY`, **not** `SUPABASE_SERVICE_ROLE_KEY`. The edge runtime blocks any custom env name starting with `SUPABASE_` (it reserves that prefix for its own injected variables) and silently drops them at startup. Similarly `SUPABASE_URL` in `supabase/functions/.env` is effectively user-supplied only because we need a value when running `supabase functions serve` outside the managed runtime.
@@ -34,6 +37,7 @@ Content-Type: application/json
   "thread_id": "7a2f8d5c-7e43-4e1f-9a0a-4b5f8d2a3c10",
   "turn_id": "b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2",
   "source": "text",
+  "retrievalMode": "hybrid",
   "project_id": "b12c4a0f-33a1-4d48-9b2f-71aa4a9d6ef1"
 }
 ```
@@ -42,6 +46,7 @@ Content-Type: application/json
 - `thread_id` — required, lowercase RFC 4122 UUID. Minted by the frontend on the first message of a fresh chat and reused for every subsequent message in that conversation (see `SPEC-chat-ui.md`).
 - `turn_id` — required UUID per user message. Uniquely identifies one user+assistant exchange; used for idempotent jobs and for pairing user/assistant rows.
 - `source` — required: `text`, `narrated`, or `both` (which AnythingLLM workspaces to call).
+- `retrievalMode` — optional: `anythingllm`, `pgvector`, or `hybrid`. Defaults to `DEFAULT_RETRIEVAL_MODE` (recommended: `hybrid`).
 - `project_id` — optional, UUID. Only honoured on the **first** insert of a thread: the upserted `chat_threads` row is stamped with this project. Subsequent requests for the same thread ignore it (upsert uses `ignoreDuplicates: true`), so the client can't sneak a thread into a different project by replaying messages. See `SPEC-projects.md`.
 
 ## Response (chat-proxy)

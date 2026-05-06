@@ -1,0 +1,10 @@
+---
+description: Default implementation repo when this workspace includes multiple Book of Heaven projects
+alwaysApply: true
+---
+
+# Primary repo
+
+Assume code changes belong in **`book-of-heaven-anythingllm`** unless the user names another repo (e.g. `book-of-heaven`, splitters).
+
+When mirroring fixes across repos, still apply edits in **`c:\Code\book-of-heaven-anythingllm`** first (or exclusively) unless explicitly asked to sync the other codebase.

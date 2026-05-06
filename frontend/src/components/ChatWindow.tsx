@@ -14,22 +14,21 @@ import type { Components } from 'react-markdown'
 import { supabase } from '../lib/supabase'
 import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
-import { IconCopy, IconFolder } from './Icons'
+import { IconCopy, IconFolder, IconPdf, IconPlayCircle } from './Icons'
 import type { AnythingLlmSource } from '../lib/sources'
 import { useYoutubeMap } from '../lib/YoutubeMapContext'
 import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import { SourceToggle } from './SourceToggle'
-import {
-  CHAT_MODELS,
-  DEFAULT_MODEL_SENTINEL,
-  ModelSelector,
-} from './ModelSelector'
+import { RetrievalModeToggle } from './RetrievalModeToggle'
 import {
   useBothReplyLayout,
   type BothReplyLayout,
 } from '../lib/bothReplyLayout'
 import { usePreferredSource, type Source } from '../lib/source'
-import { useWorkspace } from '../lib/WorkspaceContext'
+import {
+  usePreferredRetrievalMode,
+  type RetrievalMode,
+} from '../lib/retrievalMode'
 import './ChatWindow.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
@@ -37,6 +36,7 @@ import './ChatWindow.css'
 // single-source. Legacy rows (pre-migration 007) carry null.
 type UserSource = Source
 type AssistantSource = 'text' | 'narrated'
+type AssistantRetrievalMode = 'anythingllm' | 'pgvector'
 
 interface Message {
   id: string
@@ -53,6 +53,7 @@ interface Message {
   // Groups a user row with its 1-2 assistant replies. Null for pre-007 rows;
   // those keep rendering one-bubble-per-row as they did before.
   turn_id?: string | null
+  retrieval_mode?: RetrievalMode | null
 }
 
 // Module-level cache of "messages I just rendered locally for thread X".
@@ -76,12 +77,27 @@ interface FreshThreadCacheEntry {
 }
 const freshThreadCache = new Map<string, FreshThreadCacheEntry>()
 const FRESH_THREAD_CACHE_TTL_MS = 10_000
-const MODEL_STORAGE_KEY = 'boh.model'
-const CHAT_MODEL_VALUES = new Set(CHAT_MODELS.map((m) => m.value))
 
 /** Optimistic new-chat state while a job is in flight, so "/ → other thread → /" can restore. */
 const newChatPendingCache = new Map<string, FreshThreadCacheEntry>()
 const NEW_CHAT_PENDING_TTL_MS = 15 * 60 * 1000
+
+/** Must match placeholders emitted by `hitsToReplyMarkdown` in format_hits.ts. */
+const MD_SEMANTIC_HIT_NARRATED = '/__md__/semantic-hit-narrated'
+const MD_SEMANTIC_HIT_BOOK = '/__md__/semantic-hit-book'
+
+/** Replace legacy emoji markers and map placeholder imgs to SVG (see `img` in makeMarkdownComponents). */
+function normalizeSemanticSearchMarkdown(md: string): string {
+  return md
+    .replace(
+      /^(\s*\d+)\.\s*🎥\s+/gm,
+      `$1. ![Narrated audio](${MD_SEMANTIC_HIT_NARRATED}) `,
+    )
+    .replace(
+      /^(\s*\d+)\.\s*📄\s+/gm,
+      `$1. ![Book text](${MD_SEMANTIC_HIT_BOOK}) `,
+    )
+}
 
 // highlightCitations recursively descends into nested children, so we only
 // need to apply it at block level. Applying it at both block and inline
@@ -111,6 +127,29 @@ function makeMarkdownComponents(ctx: {
         {children}
       </a>
     ),
+    img: ({ src, alt }) => {
+      if (src === MD_SEMANTIC_HIT_NARRATED || src === `${MD_SEMANTIC_HIT_NARRATED}/`) {
+        return (
+          <span
+            className="semantic-hit-icon-inline semantic-hit-icon-inline--narrated"
+            aria-label={alt || 'Narrated audio match'}
+          >
+            <IconPlayCircle size={15} />
+          </span>
+        )
+      }
+      if (src === MD_SEMANTIC_HIT_BOOK || src === `${MD_SEMANTIC_HIT_BOOK}/`) {
+        return (
+          <span
+            className="semantic-hit-icon-inline semantic-hit-icon-inline--book"
+            aria-label={alt || 'Book text match'}
+          >
+            <IconPdf size={14} strokeWidth={2} />
+          </span>
+        )
+      }
+      return <img src={src ?? ''} alt={alt ?? ''} />
+    },
   }
 }
 
@@ -128,13 +167,14 @@ function AssistantMarkdown({
   youtubeMap: Record<string, string>
   pdfPages: PdfPagesIndex
 }) {
+  const normalized = useMemo(() => normalizeSemanticSearchMarkdown(content), [content])
   const components = useMemo(
     () => makeMarkdownComponents({ sources, youtubeMap, pdfPages }),
     [sources, youtubeMap, pdfPages],
   )
   return (
     <div className="chat-bubble-markdown">
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown components={components}>{normalized}</ReactMarkdown>
     </div>
   )
 }
@@ -143,6 +183,21 @@ function sourceSectionTitle(s: AssistantSource): string {
   return s === 'text'
     ? 'Book of Heaven text only'
     : 'Francis Hogan Book of Heaven Narration'
+}
+
+function retrievalModeLabel(mode: Message['retrieval_mode']): string | null {
+  if (mode === 'pgvector') return 'pgvector'
+  if (mode === 'anythingllm') return 'AnythingLLM'
+  return null
+}
+
+function assistantPanelTitle(message: Message): string {
+  const sourceLabel =
+    message.source === 'text' || message.source === 'narrated'
+      ? sourceSectionTitle(message.source)
+      : 'Reply'
+  const modeLabel = retrievalModeLabel(message.retrieval_mode)
+  return modeLabel ? `${sourceLabel} - ${modeLabel}` : sourceLabel
 }
 
 const BOTH_LAYOUT_OPTIONS: {
@@ -221,10 +276,7 @@ function SplitTurnTabs({
     <div className="chat-turn-tabs">
       <div className="chat-tab-strip">
         {assistants.map((m, i) => {
-          const title =
-            m.source === 'text' || m.source === 'narrated'
-              ? sourceSectionTitle(m.source)
-              : 'Reply'
+          const title = assistantPanelTitle(m)
           const accentKey = m.source === 'text' ? 'text' : 'narrated'
           return (
             <button
@@ -301,13 +353,23 @@ function AssistantBubble({
     message.source === 'text' || message.source === 'narrated'
       ? message.source
       : null
+  const chipRetrievalMode = retrievalModeLabel(message.retrieval_mode)
   return (
     <div className="chat-bubble chat-bubble-assistant">
-      {showChip && chipSource ? (
-        <div
-          className={`chat-bubble-source-chip chat-bubble-source-chip-${chipSource}`}
-        >
-          {sourceSectionTitle(chipSource)}
+      {showChip ? (
+        <div className="chat-bubble-chip-row">
+          {chipSource ? (
+            <div
+              className={`chat-bubble-source-chip chat-bubble-source-chip-${chipSource}`}
+            >
+              {sourceSectionTitle(chipSource)}
+            </div>
+          ) : null}
+          {chipRetrievalMode ? (
+            <div className="chat-bubble-source-chip chat-bubble-source-chip-retrieval">
+              {chipRetrievalMode}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <AssistantMarkdown
@@ -316,6 +378,25 @@ function AssistantBubble({
         youtubeMap={youtubeMap}
         pdfPages={pdfPages}
       />
+      {message.sources && message.sources.length > 0 ? (
+        <div className="chat-source-list">
+          <div className="chat-source-list-title">Sources</div>
+          <ol>
+            {message.sources.slice(0, 8).map((src, idx) => {
+              const score = typeof src.score === 'number'
+                ? `${Math.round(src.score * 1000) / 10}%`
+                : null
+              const label = src.title ?? src.chunkSource ?? `Source ${idx + 1}`
+              return (
+                <li key={`${src.chunkSource ?? 'src'}-${idx}`}>
+                  <span>{label}</span>
+                  {score ? <span className="chat-source-score">{score}</span> : null}
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -362,9 +443,13 @@ function groupIntoTurns(messages: Message[]): Turn[] {
   for (const t of turns) {
     if (t.assistants.length > 1) {
       t.assistants.sort((a, b) => {
-        const rank = (s: Message['source']) =>
+        const sourceRank = (s: Message['source']) =>
           s === 'text' ? 0 : s === 'narrated' ? 1 : 2
-        return rank(a.source) - rank(b.source)
+        const modeRank = (m: Message['retrieval_mode']) =>
+          m === 'pgvector' ? 0 : m === 'anythingllm' ? 1 : 2
+        const bySource = sourceRank(a.source) - sourceRank(b.source)
+        if (bySource !== 0) return bySource
+        return modeRank(a.retrieval_mode) - modeRank(b.retrieval_mode)
       })
     }
   }
@@ -395,19 +480,7 @@ interface ChatWindowProps {
     threadTitle?: string | null
   } | null
   onAssistantResponse?: (threadId: string) => void
-  /** After HTTP 202 on `/`, refresh workspace and navigate to `/c/:id` with optional SSE resume state. */
-  onThreadAccepted?: (
-    threadId: string,
-    resume: { jobId: string; turnId: string } | null,
-  ) => void | Promise<void>
-  /** When set, reconnect to `chat-job-events` for an in-flight turn after early navigation from `/`. */
-  resumeChatJob?: {
-    jobId: string
-    turnId: string
-    threadId: string
-  } | null
-  /** Strip `resumeChatJob` from route state after terminal SSE or error. */
-  onClearResumeChatJob?: () => void
+  onVisibleThreadChange?: (threadId: string | null) => void
 }
 
 export function ChatWindow({
@@ -419,11 +492,8 @@ export function ChatWindow({
   initialSource,
   breadcrumb,
   onAssistantResponse,
-  onThreadAccepted,
-  resumeChatJob,
-  onClearResumeChatJob,
+  onVisibleThreadChange,
 }: ChatWindowProps) {
-  const { threads } = useWorkspace()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -432,16 +502,8 @@ export function ChatWindow({
     string | null
   >(null)
   const [source, setSource] = usePreferredSource()
+  const [retrievalMode, setRetrievalMode] = usePreferredRetrievalMode()
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    try {
-      const stored = localStorage.getItem(MODEL_STORAGE_KEY)
-      if (stored && CHAT_MODEL_VALUES.has(stored)) return stored
-    } catch {
-      // localStorage may be unavailable in hardened browsers.
-    }
-    return DEFAULT_MODEL_SENTINEL
-  })
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const youtubeMap = useYoutubeMap()
   const pdfPages = usePdfPages()
@@ -461,61 +523,11 @@ export function ChatWindow({
   const eventSourceRef = useRef<EventSource | null>(null)
   const onAssistantResponseRef = useRef(onAssistantResponse)
   onAssistantResponseRef.current = onAssistantResponse
-  const activeThreadModel =
-    threadId == null
-      ? null
-      : (threads.find((t) => t.threadId === threadId)?.model ?? null)
 
   const closeJobEventSource = () => {
     eventSourceRef.current?.close()
     eventSourceRef.current = null
   }
-
-  useEffect(() => {
-    const fallback = (() => {
-      try {
-        const stored = localStorage.getItem(MODEL_STORAGE_KEY)
-        if (stored && CHAT_MODEL_VALUES.has(stored)) return stored
-      } catch {
-        // Ignore localStorage failures and use default.
-      }
-      return DEFAULT_MODEL_SENTINEL
-    })()
-    if (threadId == null) {
-      setSelectedModel(fallback)
-      return
-    }
-    const threadModel =
-      activeThreadModel && CHAT_MODEL_VALUES.has(activeThreadModel)
-        ? activeThreadModel
-        : fallback
-    setSelectedModel(threadModel)
-  }, [threadId, activeThreadModel])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(MODEL_STORAGE_KEY, selectedModel)
-    } catch {
-      // Ignore write failures in private mode.
-    }
-  }, [selectedModel])
-
-  const handleModelChange = useCallback(
-    (model: string) => {
-      if (!CHAT_MODEL_VALUES.has(model)) return
-      setSelectedModel(model)
-      if (!threadId) return
-      void supabase
-        .from('chat_threads')
-        .update({
-          model,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('thread_id', threadId)
-        .eq('user_id', user.id)
-    },
-    [threadId, user.id],
-  )
 
   useEffect(() => {
     return () => {
@@ -529,167 +541,6 @@ export function ChatWindow({
     setPendingNewChatThreadId(null)
   }, [])
 
-  const applyJobPayload = useCallback(
-    (
-      submitTurnId: string,
-      submitThreadId: string,
-      isNewThread: boolean,
-      payload: { replies?: unknown },
-    ) => {
-      if (processedTurnIdsRef.current.has(submitTurnId)) return
-      const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
-      const parsedReplies: Array<{
-        source: AssistantSource
-        reply: string
-        sources: AnythingLlmSource[] | null
-      }> = []
-      for (const r of rawReplies) {
-        if (!r || typeof r !== 'object') continue
-        const rec = r as Record<string, unknown>
-        const s = rec.source
-        if (s !== 'text' && s !== 'narrated') continue
-        const replyRaw = rec.reply
-        const replyText =
-          typeof replyRaw === 'string'
-            ? replyRaw
-            : replyRaw == null
-              ? '(The assistant returned an empty response.)'
-              : `(Unexpected response shape)\n\n${JSON.stringify(replyRaw, null, 2)}`
-        const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
-          ? (rec.sources as AnythingLlmSource[])
-          : null
-        parsedReplies.push({ source: s, reply: replyText, sources: sourcesVal })
-      }
-
-      let assistantMessages: Message[]
-      if (parsedReplies.length > 0) {
-        const tsBase = Date.now()
-        assistantMessages = parsedReplies.map((r, i) => ({
-          id: `local-${tsBase}-a-${i}`,
-          role: 'assistant' as const,
-          content: r.reply,
-          created_at: new Date(tsBase + i).toISOString(),
-          sources: r.sources,
-          source: r.source,
-          turn_id: submitTurnId,
-        }))
-      } else {
-        assistantMessages = [
-          {
-            id: `local-${Date.now()}-a-empty`,
-            role: 'assistant',
-            content: '(The assistant returned an empty response.)',
-            created_at: new Date().toISOString(),
-            turn_id: submitTurnId,
-          },
-        ]
-      }
-
-      processedTurnIdsRef.current.add(submitTurnId)
-      pendingTurnIdRef.current = null
-      newChatPendingCache.delete(submitThreadId)
-      setMessages((prev) => {
-        const next = [...prev, ...assistantMessages]
-        if (isNewThread) {
-          freshThreadCache.set(submitThreadId, {
-            messages: next,
-            ts: Date.now(),
-          })
-        }
-        return next
-      })
-      if (isNewThread) {
-        skipNextFetchForRef.current = submitThreadId
-      }
-      onAssistantResponseRef.current?.(submitThreadId)
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!resumeChatJob || !threadId) return
-    if (resumeChatJob.threadId !== threadId) return
-
-    pendingTurnIdRef.current = resumeChatJob.turnId
-    setLoading(true)
-    setLoadingThreadId(threadId)
-
-    const submitTurnId = resumeChatJob.turnId
-    const submitThreadId = resumeChatJob.threadId
-    const isNewThread = true
-
-    const esUrl = new URL(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
-    )
-    esUrl.searchParams.set('job_id', resumeChatJob.jobId)
-    esUrl.searchParams.set('access_token', session.access_token)
-    const es = new EventSource(esUrl.toString())
-    eventSourceRef.current = es
-
-    es.onmessage = (ev) => {
-      let data: { event?: string; payload?: { replies?: unknown }; error?: string }
-      try {
-        data = JSON.parse(ev.data) as typeof data
-      } catch {
-        return
-      }
-      if (data.event === 'status') return
-      if (data.event === 'timeout') {
-        es.close()
-        if (eventSourceRef.current === es) eventSourceRef.current = null
-        onClearResumeChatJob?.()
-        endInFlightUi()
-        return
-      }
-      if (data.event === 'error') {
-        es.close()
-        if (eventSourceRef.current === es) eventSourceRef.current = null
-        if (processedTurnIdsRef.current.has(submitTurnId)) return
-        const msg =
-          data.error ?? 'The assistant could not complete this turn.'
-        processedTurnIdsRef.current.add(submitTurnId)
-        pendingTurnIdRef.current = null
-        newChatPendingCache.delete(submitThreadId)
-        endInFlightUi()
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `local-${Date.now()}-sse-err-resume`,
-            role: 'assistant' as const,
-            content: msg,
-            created_at: new Date().toISOString(),
-            turn_id: submitTurnId,
-          },
-        ])
-        onClearResumeChatJob?.()
-        return
-      }
-      if (data.event === 'complete' && data.payload) {
-        es.close()
-        if (eventSourceRef.current === es) eventSourceRef.current = null
-        if (processedTurnIdsRef.current.has(submitTurnId)) return
-        applyJobPayload(submitTurnId, submitThreadId, isNewThread, data.payload)
-        endInFlightUi()
-      }
-    }
-    es.onerror = () => {
-      es.close()
-      if (eventSourceRef.current === es) eventSourceRef.current = null
-    }
-
-    return () => {
-      es.close()
-      if (eventSourceRef.current === es) eventSourceRef.current = null
-    }
-  }, [
-    resumeChatJob,
-    threadId,
-    session.access_token,
-    applyJobPayload,
-    endInFlightUi,
-    onClearResumeChatJob,
-  ])
-
   const replyInProgressHere = useMemo(
     () =>
       Boolean(
@@ -702,6 +553,14 @@ export function ChatWindow({
       ),
     [loading, loadingThreadId, threadId, pendingNewChatThreadId],
   )
+
+  useEffect(() => {
+    const visibleThreadId = threadId ?? loadingThreadId ?? null
+    onVisibleThreadChange?.(visibleThreadId)
+    return () => {
+      onVisibleThreadChange?.(null)
+    }
+  }, [threadId, loadingThreadId, onVisibleThreadChange])
 
   useEffect(() => {
     let cancelled = false
@@ -793,7 +652,7 @@ export function ChatWindow({
             if (processedTurnIdsRef.current.has(tid)) return
             const { data: urow } = await supabase
               .from('chat_messages')
-              .select('source')
+              .select('source, retrieval_mode')
               .eq('user_id', user.id)
               .eq('thread_id', threadId)
               .eq('turn_id', tid)
@@ -803,8 +662,10 @@ export function ChatWindow({
             const userSource = urow?.source as
               | UserSource
               | undefined
-            const expectAssistants =
-              userSource === 'both' ? 2 : userSource ? 1 : 1
+            const userMode = urow?.retrieval_mode as RetrievalMode | undefined
+            const sourceFanout = userSource === 'both' ? 2 : 1
+            const retrievalFanout = userMode === 'hybrid' ? 2 : 1
+            const expectAssistants = sourceFanout * retrievalFanout
             const { data, error } = await supabase
               .from('chat_messages')
               .select('*')
@@ -893,9 +754,86 @@ export function ChatWindow({
       thread_id: submitThreadId,
       turn_id: submitTurnId,
       source: effectiveSource,
-      model: selectedModel,
+      retrievalMode,
     }
     if (projectId) body.project_id = projectId
+
+    const applyPayloadToMessages = (payload: {
+      replies?: unknown
+    }): void => {
+      if (processedTurnIdsRef.current.has(submitTurnId)) return
+      const rawReplies = Array.isArray(payload?.replies) ? payload.replies : []
+      const parsedReplies: Array<{
+        source: AssistantSource
+        retrieval_mode: AssistantRetrievalMode | null
+        reply: string
+        sources: AnythingLlmSource[] | null
+      }> = []
+      for (const r of rawReplies) {
+        if (!r || typeof r !== 'object') continue
+        const rec = r as Record<string, unknown>
+        const s = rec.source
+        if (s !== 'text' && s !== 'narrated') continue
+        const retrieval_mode =
+          rec.retrieval_mode === 'anythingllm' || rec.retrieval_mode === 'pgvector'
+            ? rec.retrieval_mode
+            : null
+        const replyRaw = rec.reply
+        const replyText =
+          typeof replyRaw === 'string'
+            ? replyRaw
+            : replyRaw == null
+              ? '(The assistant returned an empty response.)'
+              : `(Unexpected response shape)\n\n${JSON.stringify(replyRaw, null, 2)}`
+        const sourcesVal = Array.isArray(rec.sources) && rec.sources.length > 0
+          ? (rec.sources as AnythingLlmSource[])
+          : null
+        parsedReplies.push({ source: s, retrieval_mode, reply: replyText, sources: sourcesVal })
+      }
+
+      let assistantMessages: Message[]
+      if (parsedReplies.length > 0) {
+        const tsBase = Date.now()
+        assistantMessages = parsedReplies.map((r, i) => ({
+          id: `local-${tsBase}-a-${i}`,
+          role: 'assistant' as const,
+          content: r.reply,
+          created_at: new Date(tsBase + i).toISOString(),
+          sources: r.sources,
+          source: r.source,
+          retrieval_mode: r.retrieval_mode,
+          turn_id: submitTurnId,
+        }))
+      } else {
+        assistantMessages = [
+          {
+            id: `local-${Date.now()}-a-empty`,
+            role: 'assistant',
+            content: '(The assistant returned an empty response.)',
+            created_at: new Date().toISOString(),
+            turn_id: submitTurnId,
+          },
+        ]
+      }
+
+      processedTurnIdsRef.current.add(submitTurnId)
+      pendingTurnIdRef.current = null
+      newChatPendingCache.delete(submitThreadId)
+      setMessages((prev) => {
+        const next = [...prev, ...assistantMessages]
+        if (isNewThread) {
+          freshThreadCache.set(submitThreadId, {
+            messages: next,
+            ts: Date.now(),
+          })
+        }
+        return next
+      })
+      if (isNewThread) {
+        skipNextFetchForRef.current = submitThreadId
+      }
+      onAssistantResponseRef.current?.(submitThreadId)
+    }
 
     let deferLoadingInFinally = false
 
@@ -991,11 +929,6 @@ export function ChatWindow({
           pendingTurnIdRef.current = null
           return
         }
-        if (isNewThread && onThreadAccepted) {
-          deferLoadingInFinally = true
-          await onThreadAccepted(submitThreadId, { jobId, turnId: submitTurnId })
-          return
-        }
         deferLoadingInFinally = true
         const esUrl = new URL(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
@@ -1015,6 +948,22 @@ export function ChatWindow({
           if (data.event === 'timeout') {
             es.close()
             if (eventSourceRef.current === es) eventSourceRef.current = null
+            if (processedTurnIdsRef.current.has(submitTurnId)) return
+            processedTurnIdsRef.current.add(submitTurnId)
+            pendingTurnIdRef.current = null
+            newChatPendingCache.delete(submitThreadId)
+            endInFlightUi()
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `local-${Date.now()}-sse-timeout`,
+                role: 'assistant' as const,
+                content:
+                  'The assistant took too long and timed out. Please send the message again.',
+                created_at: new Date().toISOString(),
+                turn_id: submitTurnId,
+              },
+            ])
             return
           }
           if (data.event === 'error') {
@@ -1043,20 +992,29 @@ export function ChatWindow({
             es.close()
             if (eventSourceRef.current === es) eventSourceRef.current = null
             if (processedTurnIdsRef.current.has(submitTurnId)) return
-            applyJobPayload(
-              submitTurnId,
-              submitThreadId,
-              isNewThread,
-              data.payload,
-            )
+            applyPayloadToMessages(data.payload)
             endInFlightUi()
           }
         }
         es.onerror = () => {
           es.close()
           if (eventSourceRef.current === es) eventSourceRef.current = null
-          // Realtime on this thread will still deliver assistant rows; keep
-          // loading true until that fires or the user navigates.
+          if (processedTurnIdsRef.current.has(submitTurnId)) return
+          processedTurnIdsRef.current.add(submitTurnId)
+          pendingTurnIdRef.current = null
+          newChatPendingCache.delete(submitThreadId)
+          endInFlightUi()
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `local-${Date.now()}-sse-disconnect`,
+              role: 'assistant' as const,
+              content:
+                'The response stream disconnected before completion. Please retry.',
+              created_at: new Date().toISOString(),
+              turn_id: submitTurnId,
+            },
+          ])
         }
         return
       }
@@ -1066,11 +1024,7 @@ export function ChatWindow({
         pendingTurnIdRef.current = null
         return
       }
-      if (isNewThread && onThreadAccepted) {
-        await onThreadAccepted(submitThreadId, null)
-        return
-      }
-      applyJobPayload(submitTurnId, submitThreadId, isNewThread, payload)
+      applyPayloadToMessages(payload)
     } catch (err) {
       console.error('Chat request failed (network)', err)
       setMessages((prev) => [
@@ -1154,9 +1108,9 @@ export function ChatWindow({
         </div>
         <div className="chat-input-bar-toggles">
           <SourceToggle value={source} onChange={setSource} disabled={loading} />
-          <ModelSelector
-            value={selectedModel}
-            onChange={handleModelChange}
+          <RetrievalModeToggle
+            value={retrievalMode}
+            onChange={setRetrievalMode}
             disabled={loading}
           />
           {showBothLayoutToggle ? (

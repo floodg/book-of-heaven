@@ -111,9 +111,9 @@ export function highlightCitations(
   return node
 }
 
-// The inner pill. Renders the compact label ("Vol 4 · No 7 · 1:23:45") and up
-// to two action icons — PDF and YouTube. Each action is a real anchor, not a
-// button, so middle-click / cmd-click opens in a new tab the native way.
+// Renders the citation as a single clickable chip.
+// Narrated citations link to the YouTube video (fallback: PDF when no video
+// exists). Book/PDF citations link directly to the PDF viewer.
 function CitationPill({
   parsed,
   links,
@@ -123,18 +123,9 @@ function CitationPill({
 }) {
   const ts = formatTimestamp(parsed.timestampSec)
 
-  // Two kinds of citations, treated as two visually distinct sources:
-  //   - "narrated"  — VTT transcript of Francis reading a Number aloud.
-  //                   Carries a Number + (usually) a timestamp, links to
-  //                   both the PDF page and the YouTube video.
-  //   - "book"      — raw text from the Book of Heaven PDF itself, emitted
-  //                   by the assistant when its retrieval hit the PDF
-  //                   rather than a VTT. Carries only a volume (+ often a
-  //                   date) and links to the PDF viewer.
-  // The source type is encoded as a CSS modifier class so we can tint the
-  // pill, and also rendered as a small leading text label so the type is
-  // legible without relying on color alone (accessibility + colorblind
-  // users).
+  // Two kinds of citations:
+  //   - "narrated" — from VTT transcript; has a Number + timestamp.
+  //   - "book"     — from the PDF text layer; has volume + date only.
   const sourceType: 'narrated' | 'book' = parsed.number != null ? 'narrated' : 'book'
   const sourceLabel = sourceType === 'narrated' ? 'Narrated' : 'Book'
 
@@ -144,56 +135,55 @@ function CitationPill({
   if (parsed.number == null && parsed.dateText) labelParts.push(parsed.dateText)
   const label = labelParts.join(' · ')
 
-  const pdfTitle =
-    links.pdfPage != null
-      ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
-      : `Open Volume ${parsed.volume} PDF`
-  const ytTitle =
-    parsed.number != null
-      ? ts
-        ? `Open YouTube video for Number ${parsed.number} at ${ts}`
-        : `Open YouTube video for Number ${parsed.number}`
-      : ''
+  // Narrated → YouTube (fallback to PDF if no video ID mapped).
+  // Book → PDF.
+  const href = sourceType === 'narrated'
+    ? (links.ytHref ?? links.pdfHref)
+    : links.pdfHref
 
-  // The excerpt tooltip goes on the outer span so hovering anywhere on the
-  // pill surfaces the retrieved passage. Falls back to the original citation
-  // text when no excerpt is available, which still lets the user see the
-  // unabbreviated LLM citation.
+  const ariaLabel = sourceType === 'narrated'
+    ? links.ytHref
+      ? (ts
+          ? `Open YouTube video for ${label}`
+          : `Open YouTube video for Number ${parsed.number}`)
+      : (links.pdfPage != null
+          ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
+          : `Open Volume ${parsed.volume} PDF`)
+    : (links.pdfPage != null
+        ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
+        : `Open Volume ${parsed.volume} PDF`)
+
+  // Tooltip surfaces the retrieved passage; falls back to the raw citation.
   const hoverTitle = links.excerpt ?? parsed.raw
 
+  const icon = sourceType === 'narrated'
+    ? <IconYoutube size={11} />
+    : <IconPdf size={10} />
+
+  const badgeClass = `citation-badge citation-badge--${sourceType}`
+
+  if (href) {
+    return (
+      <a
+        className={badgeClass}
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        title={hoverTitle}
+        aria-label={ariaLabel}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="citation-source">{sourceLabel}</span>
+        <span className="citation-label">{label}</span>
+        <span className="citation-badge-icon" aria-hidden="true">{icon}</span>
+      </a>
+    )
+  }
+
   return (
-    <span
-      className={`citation-badge citation-badge--${sourceType}`}
-      title={hoverTitle}
-    >
+    <span className={badgeClass} title={hoverTitle}>
       <span className="citation-source">{sourceLabel}</span>
       <span className="citation-label">{label}</span>
-      {links.pdfHref && (
-        <a
-          className="citation-action"
-          href={links.pdfHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={pdfTitle}
-          aria-label={pdfTitle}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <IconPdf size={12} />
-        </a>
-      )}
-      {links.ytHref && (
-        <a
-          className="citation-action"
-          href={links.ytHref}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={ytTitle}
-          aria-label={ytTitle}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <IconYoutube size={12} />
-        </a>
-      )}
     </span>
   )
 }

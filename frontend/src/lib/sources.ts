@@ -12,8 +12,9 @@
 //     on each segment is a short phrase taken verbatim from the PDF
 //     text layer on that entry's page, so pdf.js's phrase-search
 //     reliably highlights it.
-//   - `/data/youtube-map.json` — { number: videoId } for the commentary
-//     transcripts, built by `scripts/build-youtube-map.mjs`.
+//   - `/data/youtube-map.json` — { "volume:number": videoId } for each
+//     narrated recording (e.g. "3:4" for Volume 3 Number 4), built by
+//     `scripts/build-youtube-map.mjs`.
 //
 // We intentionally no longer match the AnythingLLM retrieval chunks to
 // derive the page / highlight. Those chunks are volume-wide and the best
@@ -129,7 +130,7 @@ export function resolveCitationLinks(
   const pdfHref: string = query ? `/pdf/${cite.volume}?${query}` : `/pdf/${cite.volume}`
 
   let ytHref: string | null = null
-  const videoId = youtubeMap[String(cite.number)]
+  const videoId = youtubeMap[`${cite.volume}:${cite.number}`]
   if (videoId && cite.timestampSec != null && cite.timestampSec >= 0) {
     ytHref = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&t=${cite.timestampSec}s`
   } else if (videoId) {

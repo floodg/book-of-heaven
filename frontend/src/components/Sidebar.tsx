@@ -5,11 +5,12 @@ import { supabase } from '../lib/supabase'
 import { useWorkspace } from '../lib/WorkspaceContext'
 import { recentBucket } from '../lib/time'
 import { ThreadRow } from './ThreadRow'
-import { IconChat, IconFolder, IconPlus } from './Icons'
+import { IconArrowLeft, IconChat, IconFolder, IconPlus } from './Icons'
 import './Sidebar.css'
 
 interface SidebarProps {
   user: User
+  onHide: () => void
 }
 
 // Bucket order for the Recents section — matches what the previous
@@ -17,7 +18,7 @@ interface SidebarProps {
 // conversations) are simply skipped.
 const BUCKET_ORDER = ['Today', 'Yesterday', 'Previous 7 days', 'Previous 30 days']
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, onHide }: SidebarProps) {
   const workspace = useWorkspace()
 
   const pinned = useMemo(
@@ -73,6 +74,17 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <aside className="sidebar" aria-label="Workspace navigation">
+      <div className="sidebar-topbar">
+        <button
+          type="button"
+          className="sidebar-toggle-btn"
+          onClick={onHide}
+          aria-label="Hide sidebar"
+          title="Hide sidebar"
+        >
+          <IconArrowLeft size={14} />
+        </button>
+      </div>
       <nav className="sidebar-nav">
         <NavLink
           to="/"

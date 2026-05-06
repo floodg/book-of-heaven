@@ -9,8 +9,34 @@
   overflow: hidden;
 }
 
+.sidebar-topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 10px 0 10px;
+}
+
+.sidebar-toggle-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(245, 233, 216, 0.75);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
 .sidebar-nav {
-  padding: 14px 10px 10px 10px;
+  padding: 8px 10px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;

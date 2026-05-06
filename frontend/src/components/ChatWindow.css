@@ -138,6 +138,19 @@
   white-space: normal;
 }
 
+.semantic-hit-icon-inline {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 0.35em;
+  position: relative;
+  top: -0.06em;
+  color: #5b4230;
+}
+
+.semantic-hit-icon-inline svg {
+  display: block;
+}
+
 .chat-bubble-markdown > :first-child {
   margin-top: 0;
 }
@@ -200,6 +213,43 @@
   text-decoration: underline;
 }
 
+.chat-bubble-markdown a.citation-badge {
+  text-decoration: none;
+}
+
+.chat-source-list {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e7d5b3;
+  font-size: 12px;
+}
+
+.chat-source-list-title {
+  font-weight: 700;
+  color: #4a2e18;
+  margin-bottom: 6px;
+}
+
+.chat-source-list ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-source-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-source-score {
+  color: #7a3509;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .chat-bubble-user {
   background: #92400e;
   color: #ffffff;
@@ -234,6 +284,14 @@
   max-width: 100%;
 }
 
+.chat-bubble-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .chat-bubble-source-chip-text {
   background: #f5ead4;
   color: #7a3509;
@@ -244,6 +302,12 @@
   background: #eaf1e2;
   color: #3f5a2a;
   border-color: #cdd9bc;
+}
+
+.chat-bubble-source-chip-retrieval {
+  background: #ece7ff;
+  color: #43337a;
+  border-color: #d7ceff;
 }
 
 /* Group container for a single user-question + assistant-reply(s) pair.

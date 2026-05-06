@@ -120,13 +120,38 @@ serve((req) => {
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         const enc = new TextEncoder()
-        const write = (obj: unknown) => {
-          controller.enqueue(enc.encode(encEvent(JSON.stringify(obj))))
+        let closed = false
+        const safeClose = () => {
+          if (closed) return
+          closed = true
+          try {
+            controller.close()
+          } catch {
+            // Client disconnected; stream is already closed.
+          }
+        }
+        const write = (obj: unknown): boolean => {
+          if (closed || req.signal.aborted) {
+            safeClose()
+            return false
+          }
+          try {
+            controller.enqueue(enc.encode(encEvent(JSON.stringify(obj))))
+            return true
+          } catch {
+            // Most commonly "connection closed before message completed".
+            safeClose()
+            return false
+          }
         }
         while (true) {
+          if (closed || req.signal.aborted) {
+            safeClose()
+            return
+          }
           if (Date.now() - start > MAX_MS) {
             write({ event: 'timeout', error: 'Job poll timed out; Realtime can still complete.' })
-            controller.close()
+            safeClose()
             return
           }
 
@@ -139,12 +164,12 @@ serve((req) => {
 
           if (error) {
             write({ event: 'error', error: error.message })
-            controller.close()
+            safeClose()
             return
           }
           if (!row) {
             write({ event: 'error', error: 'Job disappeared' })
-            controller.close()
+            safeClose()
             return
           }
 
@@ -154,7 +179,7 @@ serve((req) => {
             } else {
               write({ event: 'error', error: 'Job complete but missing result payload' })
             }
-            controller.close()
+            safeClose()
             return
           }
           if (row.status === 'error') {
@@ -162,7 +187,7 @@ serve((req) => {
               event: 'error',
               error: row.error_message ?? 'Turn failed',
             })
-            controller.close()
+            safeClose()
             return
           }
 
@@ -172,6 +197,9 @@ serve((req) => {
 
           await new Promise((r) => setTimeout(r, POLL_MS))
         }
+      },
+      cancel() {
+        // Browser closed EventSource; stop polling loop on next tick.
       },
     })
 

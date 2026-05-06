@@ -1,6 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
+import { embedQuery, searchDocumentChunks } from '../_shared/pgvector_search.ts'
+import {
+  hitsToReplyMarkdown,
+  hitsToSources,
+  type AnythingLlmSource,
+  type AssistantSource,
+} from '../_shared/format_hits.ts'
 
 declare const EdgeRuntime: {
   waitUntil(promise: PromiseLike<unknown>): void
@@ -18,39 +25,22 @@ const jsonHeaders = {
 }
 
 type Source = 'text' | 'narrated' | 'both'
-type AssistantSource = 'text' | 'narrated'
-type ChatModel =
-  | 'workspace-default'
-  | 'claude-sonnet-4-6'
-const DEFAULT_MODEL_SENTINEL: ChatModel = 'workspace-default'
-const ALLOWED_CHAT_MODELS = new Set<ChatModel>([
-  DEFAULT_MODEL_SENTINEL,
-  'claude-sonnet-4-6',
-])
-
-function isChatModel(value: unknown): value is ChatModel {
-  return typeof value === 'string' && ALLOWED_CHAT_MODELS.has(value as ChatModel)
-}
+type RetrievalMode = 'anythingllm' | 'pgvector' | 'hybrid'
+const MAIN_CHAT_TIMEOUT_MS = 75_000
+const TITLE_CHAT_TIMEOUT_MS = 30_000
+const DEFAULT_MATCH_COUNT = 12
+const DEFAULT_RETRIEVAL_MODE: RetrievalMode =
+  (Deno.env.get('DEFAULT_RETRIEVAL_MODE') as RetrievalMode | null) ?? 'hybrid'
 
 function workspaceSlugFor(source: AssistantSource): string {
   if (source === 'text') return Deno.env.get('ANYTHINGLLM_WORKSPACE_TEXT')!
   return Deno.env.get('ANYTHINGLLM_WORKSPACE_NARRATED')!
 }
 
-export interface AnythingLlmSource {
-  title?: string
-  chunkSource?: string
-  text?: string
-  score?: number
-  _distance?: number
-  metadata?: Record<string, unknown>
-  [key: string]: unknown
-}
-
 async function anythingLlmChat(
   message: string,
   workspaceSlug: string,
-  options?: { sessionId?: string; mode?: 'chat' | 'query'; chatModel?: string | null },
+  options?: { sessionId?: string; mode?: 'chat' | 'query'; timeoutMs?: number },
 ): Promise<{
   text: string
   error: string | null
@@ -59,74 +49,104 @@ async function anythingLlmChat(
   const anythingLlmUrl = Deno.env.get('ANYTHINGLLM_URL')!
   const anythingLlmKey = Deno.env.get('ANYTHINGLLM_KEY')!
   const mode = options?.mode ?? 'query'
+  const timeoutMs = options?.timeoutMs ?? MAIN_CHAT_TIMEOUT_MS
   const body: Record<string, unknown> = { message, mode }
   if (options?.sessionId) body.sessionId = options.sessionId
-  if (options?.chatModel) body.chatModel = options.chatModel
 
-  const response = await fetch(
-    `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${anythingLlmKey}`,
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+  const abortController = new AbortController()
+  const timeoutHandle = setTimeout(() => {
+    abortController.abort(
+      `AnythingLLM timed out after ${timeoutMs}ms for workspace ${workspaceSlug}`,
+    )
+  }, timeoutMs)
+
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  try {
+    const response = await fetch(
+      `${anythingLlmUrl}/api/v1/workspace/${workspaceSlug}/stream-chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${anythingLlmKey}`,
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        body: JSON.stringify(body),
+        signal: abortController.signal,
       },
-      body: JSON.stringify(body),
-    },
-  )
+    )
 
-  if (!response.ok || !response.body) {
-    const errText = response.body ? await response.text() : '(no body)'
-    console.error('AnythingLLM request failed', response.status, errText)
-    throw new Error(`AnythingLLM responded with ${response.status}`)
-  }
+    if (!response.ok || !response.body) {
+      const errText = response.body ? await response.text() : '(no body)'
+      console.error('AnythingLLM request failed', response.status, errText)
+      throw new Error(`AnythingLLM responded with ${response.status}`)
+    }
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let fullText = ''
-  let llmError: string | null = null
-  let sources: AnythingLlmSource[] | null = null
+    reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullText = ''
+    let llmError: string | null = null
+    let sources: AnythingLlmSource[] | null = null
 
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
 
-    let sepIndex: number
-    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-      const event = buffer.slice(0, sepIndex)
-      buffer = buffer.slice(sepIndex + 2)
+      let sepIndex: number
+      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, sepIndex)
+        buffer = buffer.slice(sepIndex + 2)
 
-      for (const line of event.split('\n')) {
-        if (!line.startsWith('data:')) continue
-        const jsonStr = line.slice(5).trim()
-        if (!jsonStr) continue
-        try {
-          const chunk = JSON.parse(jsonStr) as {
-            textResponse?: unknown
-            error?: unknown
-            close?: boolean
-            sources?: unknown
+        for (const line of event.split('\n')) {
+          if (!line.startsWith('data:')) continue
+          const jsonStr = line.slice(5).trim()
+          if (!jsonStr) continue
+          try {
+            const chunk = JSON.parse(jsonStr) as {
+              textResponse?: unknown
+              error?: unknown
+              close?: boolean
+              sources?: unknown
+            }
+            if (typeof chunk.textResponse === 'string') {
+              fullText += chunk.textResponse
+            }
+            if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
+              llmError = chunk.error
+            }
+            if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
+              sources = chunk.sources as AnythingLlmSource[]
+            }
+          } catch (parseErr) {
+            console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
           }
-          if (typeof chunk.textResponse === 'string') {
-            fullText += chunk.textResponse
-          }
-          if (typeof chunk.error === 'string' && chunk.error.trim().length > 0) {
-            llmError = chunk.error
-          }
-          if (Array.isArray(chunk.sources) && chunk.sources.length > 0) {
-            sources = chunk.sources as AnythingLlmSource[]
-          }
-        } catch (parseErr) {
-          console.warn('Failed to parse SSE chunk', jsonStr, parseErr)
         }
       }
     }
-  }
 
-  return { text: fullText, error: llmError, sources }
+    return { text: fullText, error: llmError, sources }
+  } finally {
+    clearTimeout(timeoutHandle)
+    if (reader) {
+      try {
+        await reader.cancel()
+      } catch {
+        // Ignore cancel errors from already-closed streams.
+      }
+    }
+  }
+}
+
+function retrievalModeFromUnknown(value: unknown): RetrievalMode | null {
+  if (value === 'anythingllm' || value === 'pgvector' || value === 'hybrid') return value
+  return null
+}
+
+function parseDefaultRetrievalMode(): RetrievalMode {
+  const parsed = retrievalModeFromUnknown(DEFAULT_RETRIEVAL_MODE)
+  return parsed ?? 'hybrid'
 }
 
 function normalizeTitle(raw: string): string | null {
@@ -168,6 +188,7 @@ async function generateThreadTitle(
       {
         sessionId: `book-of-heaven-title-${threadId}`,
         mode: 'chat',
+        timeoutMs: TITLE_CHAT_TIMEOUT_MS,
       },
     )
     if (error || !text.trim()) {
@@ -203,12 +224,21 @@ function pickReplyText(
 type JobResult = {
   thread_id: string
   turn_id: string
+  retrieval_mode: RetrievalMode
   title: string | null
   replies: Array<{
     source: AssistantSource
+    retrieval_mode: Exclude<RetrievalMode, 'hybrid'>
     reply: string
     sources: AnythingLlmSource[] | null
   }>
+}
+
+type AssistantReply = {
+  ws: AssistantSource
+  retrieval_mode: Exclude<RetrievalMode, 'hybrid'>
+  reply: string
+  sources: AnythingLlmSource[] | null
 }
 
 async function runChatTurn(
@@ -220,11 +250,20 @@ async function runChatTurn(
     threadId: string
     turnId: string
     source: Source
-    model: ChatModel
+    retrievalMode: RetrievalMode
     incomingProjectId: string | null
   },
 ): Promise<void> {
-  const { userId, jobId, message, threadId, turnId, source, model, incomingProjectId } = ctx
+  const {
+    userId,
+    jobId,
+    message,
+    threadId,
+    turnId,
+    source,
+    retrievalMode,
+    incomingProjectId,
+  } = ctx
   const nowIso = new Date().toISOString()
   const { error: markProcErr } = await supabase
     .from('chat_turn_jobs')
@@ -239,7 +278,7 @@ async function runChatTurn(
     const upsertPayload: Record<string, unknown> = {
       thread_id: threadId,
       user_id: userId,
-      model,
+      retrieval_mode: retrievalMode,
     }
     if (incomingProjectId) upsertPayload.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -299,27 +338,84 @@ async function runChatTurn(
       : message
 
     const workspaces = workspacesFor(source)
-    const mainResultsPromise = Promise.all(
-      workspaces.map(async (ws) => {
-        const slug = workspaceSlugFor(ws)
+    console.log(
+      `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; thread: ${threadId}`,
+    )
+    const queryEmbeddingPromise =
+      retrievalMode === 'anythingllm' ? null : embedQuery(message.trim())
+
+    const mainResultsPromise = Promise.all(workspaces.map(async (ws): Promise<AssistantReply[]> => {
+      const slug = workspaceSlugFor(ws)
+      if (retrievalMode === 'anythingllm') {
         const result = await anythingLlmChat(composedMessage, slug, {
           sessionId: threadId,
           mode: 'query',
-          chatModel: model === DEFAULT_MODEL_SENTINEL ? null : model,
+          timeoutMs: MAIN_CHAT_TIMEOUT_MS,
         })
-        return { ws, slug, result }
-      }),
-    )
+        return [{
+          ws,
+          retrieval_mode: 'anythingllm',
+          reply: pickReplyText(result, slug),
+          sources: result.sources && result.sources.length > 0 ? result.sources : null,
+        }]
+      }
+
+      const queryEmbedding = await queryEmbeddingPromise!
+      const hits = await searchDocumentChunks(
+        supabase,
+        queryEmbedding,
+        ws,
+        DEFAULT_MATCH_COUNT,
+        null,
+      )
+      console.log(`pgvector chunks retrieved: ${hits.length}; workspace: ${ws}`)
+      const pgSources = hitsToSources(hits)
+      const pgReply = hitsToReplyMarkdown(hits, ws, message)
+
+      if (retrievalMode === 'pgvector') {
+        return [{
+          ws,
+          retrieval_mode: 'pgvector',
+          reply: pgReply,
+          sources: pgSources,
+        }]
+      }
+
+      try {
+        const result = await anythingLlmChat(composedMessage, slug, {
+          sessionId: threadId,
+          mode: 'query',
+          timeoutMs: MAIN_CHAT_TIMEOUT_MS,
+        })
+        return [
+          {
+            ws,
+            retrieval_mode: 'pgvector',
+            reply: pgReply,
+            sources: pgSources,
+          },
+          {
+            ws,
+            retrieval_mode: 'anythingllm',
+            reply: pickReplyText(result, slug),
+            sources: result.sources && result.sources.length > 0 ? result.sources : null,
+          },
+        ]
+      } catch (err) {
+        console.warn(
+          `Hybrid AnythingLLM call failed for ${ws}; propagating error`,
+          err,
+        )
+        throw err
+      }
+    })).then((rows) => rows.flat())
 
     const [mainResults, title] = await Promise.all([
       mainResultsPromise,
       needsTitle ? generateThreadTitle(titleSeed, threadId) : Promise.resolve(null),
     ])
 
-    const assistantRows = mainResults.map(({ ws, slug, result }) => {
-      const reply = pickReplyText(result, slug)
-      const sourcesForDb =
-        result.sources && result.sources.length > 0 ? result.sources : null
+    const assistantRows = mainResults.map(({ ws, retrieval_mode, reply, sources }) => {
       return {
         row: {
           user_id: userId,
@@ -328,11 +424,13 @@ async function runChatTurn(
           thread_id: threadId,
           turn_id: turnId,
           source: ws,
-          sources: sourcesForDb,
+          retrieval_mode,
+          sources,
         },
         reply,
+        retrieval_mode,
         ws,
-        sources: sourcesForDb,
+        sources,
       }
     })
 
@@ -359,9 +457,11 @@ async function runChatTurn(
     const resultPayload: JobResult = {
       thread_id: threadId,
       turn_id: turnId,
+      retrieval_mode: retrievalMode,
       title: title ?? null,
       replies: assistantRows.map((r) => ({
         source: r.ws,
+        retrieval_mode: r.retrieval_mode,
         reply: r.reply,
         sources: r.sources,
       })),
@@ -405,6 +505,7 @@ async function runChatTurn(
         thread_id: threadId,
         turn_id: turnId,
         source: errSource,
+        retrieval_mode: retrievalMode,
         sources: null,
       })
     if (failBubbleErr) {
@@ -454,8 +555,8 @@ serve(async (req) => {
       thread_id?: unknown
       project_id?: unknown
       source?: unknown
-      model?: unknown
       turn_id?: unknown
+      retrievalMode?: unknown
     }
     try {
       body = await req.json()
@@ -508,18 +609,16 @@ serve(async (req) => {
       )
     }
     const source: Source = sourceRaw
-
-    const modelRaw = body?.model
-    if (!isChatModel(modelRaw)) {
+    const bodyRetrievalMode = retrievalModeFromUnknown(body?.retrievalMode)
+    if (body?.retrievalMode != null && !bodyRetrievalMode) {
       return new Response(
         JSON.stringify({
-          error:
-            "Missing or invalid model (expected 'workspace-default' or an allowed model id)",
+          error: "Invalid retrievalMode (expected 'anythingllm', 'pgvector', or 'hybrid')",
         }),
         { status: 400, headers: jsonHeaders },
       )
     }
-    const model: ChatModel = modelRaw
+    const retrievalMode = bodyRetrievalMode ?? parseDefaultRetrievalMode()
 
     const projectIdRaw = body?.project_id
     let incomingProjectId: string | null = null
@@ -585,6 +684,7 @@ serve(async (req) => {
         thread_id: threadId,
         turn_id: turnId,
         source,
+        retrieval_mode: retrievalMode,
       })
 
     if (insertUserError) {
@@ -624,7 +724,7 @@ serve(async (req) => {
     const upsertPayload2: Record<string, unknown> = {
       thread_id: threadId,
       user_id: user.id,
-      model,
+      retrieval_mode: retrievalMode,
     }
     if (incomingProjectId) upsertPayload2.project_id = incomingProjectId
     const { error: ensureThreadError } = await supabase
@@ -632,15 +732,6 @@ serve(async (req) => {
       .upsert(upsertPayload2, { onConflict: 'thread_id', ignoreDuplicates: true })
     if (ensureThreadError) {
       console.warn('Failed to upsert chat_threads row', ensureThreadError)
-    }
-
-    const { error: ensureThreadModelError } = await supabase
-      .from('chat_threads')
-      .update({ model, updated_at: new Date().toISOString() })
-      .eq('thread_id', threadId)
-      .eq('user_id', user.id)
-    if (ensureThreadModelError) {
-      console.warn('Failed to persist chat model on thread', ensureThreadModelError)
     }
 
     const { data: threadRowPj, error: threadPjErr } = await supabase
@@ -661,6 +752,7 @@ serve(async (req) => {
         thread_id: threadId,
         turn_id: turnId,
         source,
+        retrieval_mode: retrievalMode,
         project_id: jobProjectId,
         status: 'pending',
       })
@@ -710,7 +802,7 @@ serve(async (req) => {
         threadId,
         turnId,
         source,
-        model,
+        retrievalMode,
         incomingProjectId,
       }),
     )
@@ -720,6 +812,7 @@ serve(async (req) => {
         job_id: jobId,
         thread_id: threadId,
         turn_id: turnId,
+        retrieval_mode: retrievalMode,
         title: null,
         status: 'accepted',
       }),
