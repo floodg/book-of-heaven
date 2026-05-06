@@ -37,6 +37,7 @@ export interface Thread {
   lastMessageAt: string
   projectId: string | null
   pinnedAt: string | null
+  model: string | null
 }
 
 export interface WorkspaceApi {
@@ -180,6 +181,7 @@ function assembleThreads(
       lastMessageAt: a?.lastMessageAt ?? t?.updated_at ?? t?.created_at ?? new Date(0).toISOString(),
       projectId: t?.project_id ?? null,
       pinnedAt: t?.pinned_at ?? null,
+      model: null,
     })
   }
 
@@ -241,7 +243,27 @@ export function WorkspaceProvider({
       const rawThreads = (threadsRes.data ?? []) as RawThread[]
       const rawProjects = (projectsRes.data ?? []) as RawProject[]
 
-      setThreads(assembleThreads(rawMessages, rawThreads))
+      let mergedThreads = assembleThreads(rawMessages, rawThreads)
+      const modelsRes = await supabase
+        .from('chat_threads')
+        .select('thread_id, model')
+        .eq('user_id', user.id)
+      if (!modelsRes.error && modelsRes.data?.length) {
+        const modelByThreadId = new Map<string, string | null>()
+        for (const row of modelsRes.data as {
+          thread_id: string
+          model: string | null
+        }[]) {
+          modelByThreadId.set(row.thread_id, row.model ?? null)
+        }
+        mergedThreads = mergedThreads.map((t) => ({
+          ...t,
+          model: modelByThreadId.get(t.threadId) ?? t.model ?? null,
+        }))
+      }
+      if (fetchIdRef.current !== fetchId) return
+
+      setThreads(mergedThreads)
       setProjects(
         rawProjects
           .map(
