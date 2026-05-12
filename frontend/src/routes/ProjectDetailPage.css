@@ -19,8 +19,10 @@
   min-width: 320px;
   border-left: 1px solid #e7d5b3;
   background: #ffffff;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 28px 24px 60px 24px;
+  box-sizing: border-box;
 }
 
 .project-detail-back {
@@ -150,6 +152,15 @@
   flex-wrap: wrap;
 }
 
+.project-input-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
 .project-input-textarea {
   flex: 1;
   resize: none;
@@ -223,6 +234,8 @@
 
 .project-aside-panel {
   margin-bottom: 24px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .project-aside-panel-header {
@@ -245,10 +258,13 @@
   color: rgba(74, 46, 24, 0.55);
   margin: 2px 0 10px 0;
   line-height: 1.5;
+  overflow-wrap: break-word;
 }
 
 .project-aside-instructions {
+  display: block;
   width: 100%;
+  max-width: 100%;
   min-height: 160px;
   padding: 10px 12px;
   border: 1px solid #e7d5b3;
@@ -260,6 +276,8 @@
   line-height: 1.5;
   resize: vertical;
   outline: none;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
 }
 
 .project-aside-instructions:focus {

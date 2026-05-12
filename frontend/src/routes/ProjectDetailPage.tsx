@@ -13,7 +13,12 @@ import { useModal } from '../components/Modal'
 import { ThreadRow } from '../components/ThreadRow'
 import { IconArrowLeft } from '../components/Icons'
 import { SourceToggle } from '../components/SourceToggle'
+import { RetrievalModeToggle } from '../components/RetrievalModeToggle'
 import { usePreferredSource, type Source } from '../lib/source'
+import {
+  usePreferredRetrievalMode,
+  type RetrievalMode,
+} from '../lib/retrievalMode'
 import { generateThreadId } from '../lib/ids'
 import type { ChatPageRouteState } from './ChatPage'
 import './ProjectDetailPage.css'
@@ -83,13 +88,14 @@ function ProjectDetailBody({ project }: { project: Project }) {
   )
 
   const handleSubmitNewChat = useCallback(
-    (draft: string, source: Source) => {
+    (draft: string, source: Source, retrievalMode: RetrievalMode) => {
       const trimmed = draft.trim()
       if (!trimmed) return
       const threadId = generateThreadId()
       const state: ChatPageRouteState = {
         initialMessage: trimmed,
         initialSource: source,
+        initialRetrievalMode: retrievalMode,
         projectId: project.id,
       }
       navigate(`/c/${threadId}`, { state })
@@ -334,7 +340,7 @@ function ProjectHeader({ project, modal, workspace }: ProjectHeaderProps) {
 interface ProjectChatInputProps {
   placeholder: string
   projectName: string
-  onSubmit: (draft: string, source: Source) => void
+  onSubmit: (draft: string, source: Source, retrievalMode: RetrievalMode) => void
 }
 
 function ProjectChatInput({
@@ -344,6 +350,7 @@ function ProjectChatInput({
 }: ProjectChatInputProps) {
   const [draft, setDraft] = useState('')
   const [source, setSource] = usePreferredSource()
+  const [retrievalMode, setRetrievalMode] = usePreferredRetrievalMode()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Auto-resize the textarea so multi-line drafts don't get clipped. Capped
@@ -357,7 +364,7 @@ function ProjectChatInput({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    onSubmit(draft, source)
+    onSubmit(draft, source, retrievalMode)
     setDraft('')
   }
 
@@ -366,7 +373,7 @@ function ProjectChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (draft.trim()) {
-        onSubmit(draft, source)
+        onSubmit(draft, source, retrievalMode)
         setDraft('')
       }
     }
@@ -386,7 +393,13 @@ function ProjectChatInput({
           rows={1}
         />
         <div className="project-input-actions">
-          <SourceToggle value={source} onChange={setSource} />
+          <div className="project-input-toggles">
+            <SourceToggle value={source} onChange={setSource} />
+            <RetrievalModeToggle
+              value={retrievalMode}
+              onChange={setRetrievalMode}
+            />
+          </div>
           <button
             type="submit"
             className="project-input-submit"

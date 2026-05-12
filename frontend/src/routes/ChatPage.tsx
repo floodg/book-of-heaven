@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom'
 import { ChatWindow } from '../components/ChatWindow'
 import type { Source } from '../lib/source'
+import type { RetrievalMode } from '../lib/retrievalMode'
 import { useWorkspace } from '../lib/WorkspaceContext'
 import type { ProtectedOutletContext } from './ProtectedLayout'
 
@@ -20,6 +21,8 @@ export interface ChatPageRouteState {
   /** Source selection the user made on ProjectDetailPage's compose box.
    *  When omitted, ChatWindow falls back to the user's persisted preference. */
   initialSource?: Source
+  /** Retrieval mode from ProjectDetailPage — forwarded to the first request. */
+  initialRetrievalMode?: RetrievalMode
   projectId?: string
   /**
    * Set when opening a thread from the "Response ready" toast. Skips the
@@ -113,6 +116,7 @@ export function ChatPage() {
       projectId={state?.projectId ?? null}
       initialMessage={state?.initialMessage ?? null}
       initialSource={state?.initialSource ?? null}
+      initialRetrievalMode={state?.initialRetrievalMode ?? null}
       breadcrumb={breadcrumb}
       onAssistantResponse={handleAssistantResponse}
       onVisibleThreadChange={handleVisibleThreadChange}
