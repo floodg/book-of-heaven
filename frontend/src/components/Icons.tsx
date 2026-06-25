@@ -203,6 +203,17 @@ export function IconYoutube({ size, ...rest }: IconProps) {
   )
 }
 
+// Open book — Scripture citation pill link to BibleHub.
+export function IconScripture({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 12, rest)}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="12" y1="6" x2="12" y2="14" />
+    </svg>
+  )
+}
+
 export function IconCopy({ size, ...rest }: IconProps) {
   return (
     <svg {...baseProps(size ?? 14, rest)}>

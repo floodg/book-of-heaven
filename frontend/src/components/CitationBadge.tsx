@@ -11,8 +11,14 @@ import {
   type AnythingLlmSource,
   type CitationLinks,
 } from '../lib/sources'
+import {
+  parseScripture,
+  resolveScriptureLink,
+  SCRIPTURE_PATTERN,
+  type ParsedScripture,
+} from '../lib/scripture'
 import type { PdfPagesIndex } from '../lib/PdfPagesContext'
-import { IconPdf, IconYoutube } from './Icons'
+import { IconPdf, IconScripture, IconYoutube } from './Icons'
 import './CitationBadge.css'
 
 // Context threaded down from ChatWindow per-message. When absent (empty
@@ -31,7 +37,36 @@ const EMPTY_CONTEXT: CitationContext = {
   pdfPages: {},
 }
 
-function splitStringIntoCitations(
+type InlineToken =
+  | { kind: 'citation'; start: number; end: number; raw: string }
+  | { kind: 'scripture'; start: number; end: number; raw: string }
+
+function collectInlineTokens(text: string): InlineToken[] {
+  const tokens: InlineToken[] = []
+
+  for (const match of text.matchAll(CITATION_PATTERN)) {
+    const start = match.index ?? 0
+    tokens.push({ kind: 'citation', start, end: start + match[0].length, raw: match[0] })
+  }
+
+  for (const match of text.matchAll(SCRIPTURE_PATTERN)) {
+    const start = match.index ?? 0
+    tokens.push({ kind: 'scripture', start, end: start + match[0].length, raw: match[0] })
+  }
+
+  tokens.sort((a, b) => a.start - b.start || a.end - b.end)
+
+  const deduped: InlineToken[] = []
+  for (const token of tokens) {
+    const prev = deduped[deduped.length - 1]
+    if (prev && token.start < prev.end) continue
+    deduped.push(token)
+  }
+
+  return deduped
+}
+
+function splitStringIntoInlineRefs(
   text: string,
   keyPrefix: string,
   ctx: CitationContext,
@@ -40,32 +75,52 @@ function splitStringIntoCitations(
   let lastIndex = 0
   let hitIndex = 0
 
-  for (const match of text.matchAll(CITATION_PATTERN)) {
-    const start = match.index ?? 0
-    if (start > lastIndex) {
-      segments.push(text.slice(lastIndex, start))
+  for (const token of collectInlineTokens(text)) {
+    if (token.start > lastIndex) {
+      segments.push(text.slice(lastIndex, token.start))
     }
-    const raw = match[0]
-    const parsed = parseCitation(raw)
-    if (parsed) {
-      const links = resolveCitationLinks(parsed, ctx.sources, ctx.youtubeMap, ctx.pdfPages)
-      segments.push(
-        <CitationPill
-          key={`${keyPrefix}-cite-${hitIndex++}`}
-          parsed={parsed}
-          links={links}
-        />,
-      )
+
+    if (token.kind === 'scripture') {
+      const parsed = parseScripture(token.raw)
+      if (parsed) {
+        segments.push(
+          <ScripturePill
+            key={`${keyPrefix}-scripture-${hitIndex++}`}
+            parsed={parsed}
+            href={resolveScriptureLink(parsed)}
+          />,
+        )
+      } else {
+        segments.push(
+          <span
+            key={`${keyPrefix}-scripture-${hitIndex++}`}
+            className="citation-badge citation-badge--scripture"
+          >
+            {token.raw}
+          </span>,
+        )
+      }
     } else {
-      // Unparseable but citation-shaped — fall back to the old plain pill so
-      // we never swallow the author's citation into raw text.
-      segments.push(
-        <span key={`${keyPrefix}-cite-${hitIndex++}`} className="citation-badge">
-          {raw}
-        </span>,
-      )
+      const parsed = parseCitation(token.raw)
+      if (parsed) {
+        const links = resolveCitationLinks(parsed, ctx.sources, ctx.youtubeMap, ctx.pdfPages)
+        segments.push(
+          <CitationPill
+            key={`${keyPrefix}-cite-${hitIndex++}`}
+            parsed={parsed}
+            links={links}
+          />,
+        )
+      } else {
+        segments.push(
+          <span key={`${keyPrefix}-cite-${hitIndex++}`} className="citation-badge">
+            {token.raw}
+          </span>,
+        )
+      }
     }
-    lastIndex = start + raw.length
+
+    lastIndex = token.end
   }
 
   if (lastIndex < text.length) {
@@ -83,7 +138,7 @@ export function highlightCitations(
   if (node == null || typeof node === 'boolean') return node
 
   if (typeof node === 'string') {
-    const parts = splitStringIntoCitations(node, keyPrefix, ctx)
+    const parts = splitStringIntoInlineRefs(node, keyPrefix, ctx)
     return parts.length === 1 ? parts[0] : <>{parts}</>
   }
 
@@ -182,6 +237,46 @@ function CitationPill({
     <span className={badgeClass} title={hoverTitle}>
       <span className="citation-source">{sourceLabel}</span>
       <span className="citation-label">{label}</span>
+    </span>
+  )
+}
+
+function ScripturePill({
+  parsed,
+  href,
+}: {
+  parsed: ParsedScripture
+  href: string | null
+}) {
+  const badgeClass = 'citation-badge citation-badge--scripture'
+  const ariaLabel = href
+    ? `Open ${parsed.label} on BibleHub`
+    : parsed.label
+
+  if (href) {
+    return (
+      <a
+        className={badgeClass}
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        title={parsed.label}
+        aria-label={ariaLabel}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="citation-source">Scripture</span>
+        <span className="citation-label">{parsed.label}</span>
+        <span className="citation-badge-icon" aria-hidden="true">
+          <IconScripture size={10} />
+        </span>
+      </a>
+    )
+  }
+
+  return (
+    <span className={badgeClass} title={parsed.label}>
+      <span className="citation-source">Scripture</span>
+      <span className="citation-label">{parsed.label}</span>
     </span>
   )
 }
