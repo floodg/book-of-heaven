@@ -87,7 +87,7 @@ export interface CitationLinks {
 
 export function resolveCitationLinks(
   cite: ParsedCitation,
-  _sources: AnythingLlmSource[] | null,
+  sources: AnythingLlmSource[] | null,
   youtubeMap: Record<string, string>,
   pdfPages: PdfPagesIndex = {},
 ): CitationLinks {
@@ -129,8 +129,26 @@ export function resolveCitationLinks(
   const query = pdfParams.toString()
   const pdfHref: string = query ? `/pdf/${cite.volume}?${query}` : `/pdf/${cite.volume}`
 
+  let videoId = youtubeMap[`${cite.volume}:${cite.number}`]?.trim()
+  if (!videoId && sources?.length) {
+    for (const src of sources) {
+      const meta = src.metadata ?? {}
+      const vol = meta.volume
+      const tn = meta.transcript_number
+      const ytid =
+        typeof meta.youtube_video_id === 'string' ? meta.youtube_video_id.trim() : ''
+      if (
+        vol === cite.volume &&
+        tn === cite.number &&
+        ytid.length > 0
+      ) {
+        videoId = ytid
+        break
+      }
+    }
+  }
+
   let ytHref: string | null = null
-  const videoId = youtubeMap[`${cite.volume}:${cite.number}`]
   if (videoId && cite.timestampSec != null && cite.timestampSec >= 0) {
     ytHref = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&t=${cite.timestampSec}s`
   } else if (videoId) {

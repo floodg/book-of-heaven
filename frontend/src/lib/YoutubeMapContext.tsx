@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 // Transcript-number (as a string like "7") → YouTube video ID. The map is
 // served as a static JSON under /data/youtube-map.json (see
 // frontend/public/data/youtube-map.json, built by scripts/build-youtube-map.mjs).
+// Keys are "volume:number" (e.g. "12:21").
 //
 // We fetch it once at app boot and share it through context. It's a small
 // JSON (~612 entries at most, ~15 KB), so keeping it in memory for the
@@ -16,7 +17,12 @@ export function YoutubeMapProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/data/youtube-map.json', { cache: 'force-cache' })
+    // Avoid stale maps during dev (and after deploy) — force-cache kept an old
+    // partial file when entries were added to youtube-map.json.
+    const url = import.meta.env.DEV
+      ? `/data/youtube-map.json?dev=${Date.now()}`
+      : '/data/youtube-map.json'
+    fetch(url, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) throw new Error(`status ${res.status}`)
         const body = (await res.json()) as unknown

@@ -135,20 +135,18 @@ function CitationPill({
   if (parsed.number == null && parsed.dateText) labelParts.push(parsed.dateText)
   const label = labelParts.join(' · ')
 
-  // Narrated → YouTube (fallback to PDF if no video ID mapped).
-  // Book → PDF.
-  const href = sourceType === 'narrated'
-    ? (links.ytHref ?? links.pdfHref)
-    : links.pdfHref
+  // Narrated → YouTube when mapped; otherwise PDF. Book → PDF only.
+  const href =
+    sourceType === 'narrated'
+      ? (links.ytHref ?? links.pdfHref)
+      : links.pdfHref
 
-  const ariaLabel = sourceType === 'narrated'
-    ? links.ytHref
-      ? (ts
-          ? `Open YouTube video for ${label}`
-          : `Open YouTube video for Number ${parsed.number}`)
-      : (links.pdfPage != null
-          ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
-          : `Open Volume ${parsed.volume} PDF`)
+  const opensYoutube = sourceType === 'narrated' && Boolean(links.ytHref)
+
+  const ariaLabel = opensYoutube
+    ? (ts
+        ? `Open YouTube video for ${label}`
+        : `Open YouTube video for Number ${parsed.number}`)
     : (links.pdfPage != null
         ? `Open Volume ${parsed.volume} PDF at page ${links.pdfPage}`
         : `Open Volume ${parsed.volume} PDF`)
@@ -156,7 +154,7 @@ function CitationPill({
   // Tooltip surfaces the retrieved passage; falls back to the raw citation.
   const hoverTitle = links.excerpt ?? parsed.raw
 
-  const icon = sourceType === 'narrated'
+  const icon = opensYoutube
     ? <IconYoutube size={11} />
     : <IconPdf size={10} />
 
