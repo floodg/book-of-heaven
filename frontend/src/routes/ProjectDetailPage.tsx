@@ -11,9 +11,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useWorkspace, type Project } from '../lib/WorkspaceContext'
 import { useModal } from '../components/Modal'
 import { ThreadRow } from '../components/ThreadRow'
+import { ChatSearch } from '../components/ChatSearch'
 import { IconArrowLeft } from '../components/Icons'
+import { filterThreadsByQuery } from '../lib/threadSearch'
 import { SourceToggle } from '../components/SourceToggle'
 import { RetrievalModeToggle } from '../components/RetrievalModeToggle'
+import { AdvancedSearch } from '../components/AdvancedSearch'
 import { usePreferredSource, type Source } from '../lib/source'
 import {
   usePreferredRetrievalMode,
@@ -78,17 +81,28 @@ function ProjectDetailBody({ project }: { project: Project }) {
   const workspace = useWorkspace()
   const modal = useModal()
   const navigate = useNavigate()
+  const [chatQuery, setChatQuery] = useState('')
 
   const threadsInProject = useMemo(
     () =>
       workspace.threads
-        .filter((t) => t.projectId === project.id)
+        .filter((t) => t.projectId === project.id && !t.archivedAt)
         .sort((a, b) => (a.lastMessageAt < b.lastMessageAt ? 1 : -1)),
     [workspace.threads, project.id],
   )
 
+  const visibleThreads = useMemo(
+    () => filterThreadsByQuery(threadsInProject, chatQuery),
+    [threadsInProject, chatQuery],
+  )
+
   const handleSubmitNewChat = useCallback(
-    (draft: string, source: Source, retrievalMode: RetrievalMode) => {
+    (
+      draft: string,
+      source: Source,
+      retrievalMode: RetrievalMode,
+      filterVolume: number | null,
+    ) => {
       const trimmed = draft.trim()
       if (!trimmed) return
       const threadId = generateThreadId()
@@ -96,6 +110,7 @@ function ProjectDetailBody({ project }: { project: Project }) {
         initialMessage: trimmed,
         initialSource: source,
         initialRetrievalMode: retrievalMode,
+        initialFilterVolume: filterVolume,
         projectId: project.id,
       }
       navigate(`/c/${threadId}`, { state })
@@ -120,7 +135,12 @@ function ProjectDetailBody({ project }: { project: Project }) {
         />
 
         <div>
-          <h2 className="project-threads-header">Chats in this project</h2>
+          <div className="project-threads-toolbar">
+            <h2 className="project-threads-header">Chats in this project</h2>
+            {threadsInProject.length > 0 ? (
+              <ChatSearch value={chatQuery} onChange={setChatQuery} />
+            ) : null}
+          </div>
           {threadsInProject.length === 0 ? (
             <div className="project-threads-empty">
               Start a chat above to keep conversations organized and
@@ -128,9 +148,13 @@ function ProjectDetailBody({ project }: { project: Project }) {
                 ? ' follow this project\'s instructions.'
                 : ' re-use project knowledge.'}
             </div>
+          ) : visibleThreads.length === 0 ? (
+            <div className="project-threads-empty">
+              No chats match “{chatQuery.trim()}”.
+            </div>
           ) : (
             <div className="project-threads-list">
-              {threadsInProject.map((t) => (
+              {visibleThreads.map((t) => (
                 <ThreadRow key={t.threadId} thread={t} hideProjectIndicator />
               ))}
             </div>
@@ -252,7 +276,7 @@ function ProjectHeader({ project, modal, workspace }: ProjectHeaderProps) {
 
   const handleDelete = async () => {
     const threadCount = workspace.threads.filter(
-      (t) => t.projectId === project.id,
+      (t) => t.projectId === project.id && !t.archivedAt,
     ).length
     const ok = await modal.confirm({
       title: threadCount === 0 ? 'Delete project?' : `Delete project and ${threadCount} conversation${threadCount === 1 ? '' : 's'}?`,
@@ -340,7 +364,12 @@ function ProjectHeader({ project, modal, workspace }: ProjectHeaderProps) {
 interface ProjectChatInputProps {
   placeholder: string
   projectName: string
-  onSubmit: (draft: string, source: Source, retrievalMode: RetrievalMode) => void
+  onSubmit: (
+    draft: string,
+    source: Source,
+    retrievalMode: RetrievalMode,
+    filterVolume: number | null,
+  ) => void
 }
 
 function ProjectChatInput({
@@ -351,6 +380,7 @@ function ProjectChatInput({
   const [draft, setDraft] = useState('')
   const [source, setSource] = usePreferredSource()
   const [retrievalMode, setRetrievalMode] = usePreferredRetrievalMode()
+  const [filterVolume, setFilterVolume] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Auto-resize the textarea so multi-line drafts don't get clipped. Capped
@@ -364,7 +394,7 @@ function ProjectChatInput({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    onSubmit(draft, source, retrievalMode)
+    onSubmit(draft, source, retrievalMode, filterVolume)
     setDraft('')
   }
 
@@ -373,7 +403,7 @@ function ProjectChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (draft.trim()) {
-        onSubmit(draft, source, retrievalMode)
+        onSubmit(draft, source, retrievalMode, filterVolume)
         setDraft('')
       }
     }
@@ -408,6 +438,11 @@ function ProjectChatInput({
             Send
           </button>
         </div>
+        <AdvancedSearch
+          filterVolume={filterVolume}
+          onFilterVolumeChange={setFilterVolume}
+          retrievalMode={retrievalMode}
+        />
       </form>
     </div>
   )

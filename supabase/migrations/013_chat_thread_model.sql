@@ -3,4 +3,4 @@
 --   * NULL remains supported for legacy rows and default fallback behavior
 
 alter table chat_threads
-  add column model text null;
+  add column if not exists model text null;

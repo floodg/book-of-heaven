@@ -11,15 +11,24 @@ import { Link } from 'react-router-dom'
 import type { Session, User } from '@supabase/supabase-js'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
-import { supabase } from '../lib/supabase'
+import { getSupabaseUrl, supabase, supabaseRequestHeaders } from '../lib/supabase'
 import { generateThreadId } from '../lib/ids'
 import { highlightCitations } from './CitationBadge'
-import { IconCopy, IconFolder, IconPdf, IconPlayCircle } from './Icons'
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconChevron,
+  IconCopy,
+  IconFolder,
+  IconPdf,
+  IconPlayCircle,
+} from './Icons'
 import type { AnythingLlmSource } from '../lib/sources'
 import { useYoutubeMap } from '../lib/YoutubeMapContext'
 import { usePdfPages, type PdfPagesIndex } from '../lib/PdfPagesContext'
 import { SourceToggle } from './SourceToggle'
 import { RetrievalModeToggle } from './RetrievalModeToggle'
+import { AdvancedSearch } from './AdvancedSearch'
 import {
   useBothReplyLayout,
   type BothReplyLayout,
@@ -29,6 +38,8 @@ import {
   usePreferredRetrievalMode,
   type RetrievalMode,
 } from '../lib/retrievalMode'
+import { parseVolumeFilter } from '../lib/volumes'
+import { isMobileViewport } from '../lib/viewport'
 import './ChatWindow.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
@@ -474,6 +485,8 @@ interface ChatWindowProps {
   /** Optional retrieval mode for the auto-submitted initial message and to
    *  sync the in-chat toggles when arriving from ProjectDetailPage. */
   initialRetrievalMode?: RetrievalMode | null
+  /** Optional volume scope (1–36) for the auto-submitted initial message. */
+  initialFilterVolume?: number | null
   /** Small breadcrumb shown above the messages when the active thread
    *  belongs to a project. Purely presentational; ChatPage looks these
    *  up from WorkspaceContext + route state and passes them in. */
@@ -494,6 +507,7 @@ export function ChatWindow({
   initialMessage,
   initialSource,
   initialRetrievalMode,
+  initialFilterVolume,
   breadcrumb,
   onAssistantResponse,
   onVisibleThreadChange,
@@ -507,7 +521,21 @@ export function ChatWindow({
   >(null)
   const [source, setSource] = usePreferredSource()
   const [retrievalMode, setRetrievalMode] = usePreferredRetrievalMode()
+  const [filterVolume, setFilterVolume] = useState<number | null>(
+    () => parseVolumeFilter(initialFilterVolume),
+  )
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
+  // Collapsed by default on narrow screens so the input bar stays compact on mobile.
+  const [searchPanelOpen, setSearchPanelOpen] = useState(
+    () => !isMobileViewport(),
+  )
+  // On mobile, opening an existing thread starts with the composer hidden so
+  // the message field is not focused and the on-screen keyboard stays closed.
+  const [composerOpen, setComposerOpen] = useState(
+    () => !isMobileViewport() || !threadId,
+  )
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const focusComposerOnOpenRef = useRef(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const youtubeMap = useYoutubeMap()
   const pdfPages = usePdfPages()
@@ -711,12 +739,17 @@ export function ChatWindow({
     messageText: string,
     overrideSource?: Source,
     overrideRetrievalMode?: RetrievalMode,
+    overrideFilterVolume?: number | null,
   ) => {
     // One in-flight request at a time (shared refs) — block until it finishes.
     if (!messageText || loading) return
 
     const effectiveSource: Source = overrideSource ?? source
     const effectiveRetrievalMode = overrideRetrievalMode ?? retrievalMode
+    const effectiveFilterVolume =
+      overrideFilterVolume !== undefined
+        ? parseVolumeFilter(overrideFilterVolume)
+        : filterVolume
     const isNewThread = !threadId
     const submitThreadId = threadId ?? generateThreadId()
     const submitTurnId = generateThreadId()
@@ -763,6 +796,12 @@ export function ChatWindow({
       retrievalMode: effectiveRetrievalMode,
     }
     if (projectId) body.project_id = projectId
+    if (
+      effectiveFilterVolume != null &&
+      effectiveRetrievalMode !== 'anythingllm'
+    ) {
+      body.filterVolume = effectiveFilterVolume
+    }
 
     const applyPayloadToMessages = (payload: {
       replies?: unknown
@@ -845,12 +884,13 @@ export function ChatWindow({
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`,
+        `${getSupabaseUrl()}/functions/v1/chat-proxy`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            ...supabaseRequestHeaders(),
           },
           body: JSON.stringify(body),
         },
@@ -937,7 +977,7 @@ export function ChatWindow({
         }
         deferLoadingInFinally = true
         const esUrl = new URL(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-job-events`,
+          `${getSupabaseUrl()}/functions/v1/chat-job-events`,
         )
         esUrl.searchParams.set('job_id', jobId)
         esUrl.searchParams.set('access_token', session.access_token)
@@ -1065,25 +1105,31 @@ export function ChatWindow({
     if (!initialMessage) return
     const trimmed = initialMessage.trim()
     if (!trimmed) return
-    const autoKey = `${trimmed}\0${initialSource ?? ''}\0${initialRetrievalMode ?? ''}`
+    const autoKey = `${trimmed}\0${initialSource ?? ''}\0${initialRetrievalMode ?? ''}\0${initialFilterVolume ?? ''}`
     if (autoSubmittedRef.current === autoKey) return
     autoSubmittedRef.current = autoKey
     void submitMessage(
       trimmed,
       initialSource ?? undefined,
       initialRetrievalMode ?? undefined,
+      initialFilterVolume ?? undefined,
     )
     // submitMessage is stable-enough in practice (closes over current state)
     // but listing it in deps would fire infinite submits; the ref guard is
     // what actually enforces once-per-mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage, initialSource, initialRetrievalMode])
+  }, [initialMessage, initialSource, initialRetrievalMode, initialFilterVolume])
 
   // Align the in-chat retrieval toggle with the project compose box selection.
   useEffect(() => {
     if (!initialRetrievalMode) return
     setRetrievalMode(initialRetrievalMode)
   }, [initialRetrievalMode, setRetrievalMode])
+
+  useEffect(() => {
+    if (initialFilterVolume == null) return
+    setFilterVolume(parseVolumeFilter(initialFilterVolume))
+  }, [initialFilterVolume])
 
   // "Empty landing" layout: no messages yet, not currently loading a reply
   // for *this* view, and not mid-auto-submit from ProjectDetailPage. In that
@@ -1102,18 +1148,65 @@ export function ChatWindow({
   )
   const showBothLayoutToggle = source === 'both' || hasSplitTurns
 
+  const searchPanelSummary = [
+    source === 'text' ? 'Text' : source === 'narrated' ? 'Narrated' : 'Both',
+    retrievalMode === 'anythingllm'
+      ? 'AnythingLLM'
+      : retrievalMode === 'pgvector'
+        ? 'pgvector'
+        : 'Hybrid',
+    showBothLayoutToggle
+      ? bothReplyLayout === 'split'
+        ? 'Side by side'
+        : 'Tab view'
+      : null,
+    filterVolume != null ? `Vol ${filterVolume}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const openComposer = () => {
+    focusComposerOnOpenRef.current = true
+    setComposerOpen(true)
+  }
+
+  const closeComposer = () => {
+    inputRef.current?.blur()
+    setComposerOpen(false)
+  }
+
+  useEffect(() => {
+    if (!composerOpen || !focusComposerOnOpenRef.current) return
+    focusComposerOnOpenRef.current = false
+    inputRef.current?.focus()
+  }, [composerOpen])
+
   const inputBar = (
     <form className="chat-input-bar" onSubmit={handleSubmit}>
       <div className="chat-input-bar-inner">
+        {!isEmpty ? (
+          <div className="chat-composer-topbar">
+            <button
+              type="button"
+              className="chat-composer-hide-btn"
+              onClick={closeComposer}
+              aria-label="Hide message box"
+              title="Hide message box"
+            >
+              <IconArrowDown size={14} />
+            </button>
+          </div>
+        ) : null}
         <div className="chat-input-bar-row">
           <input
+            ref={inputRef}
             type="text"
             className="chat-input"
             placeholder="Ask about the Book of Heaven..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
-            autoFocus
+            autoFocus={!isMobileViewport()}
           />
           <button
             type="submit"
@@ -1123,20 +1216,55 @@ export function ChatWindow({
             Send
           </button>
         </div>
-        <div className="chat-input-bar-toggles">
-          <SourceToggle value={source} onChange={setSource} disabled={loading} />
-          <RetrievalModeToggle
-            value={retrievalMode}
-            onChange={setRetrievalMode}
-            disabled={loading}
+        <button
+          type="button"
+          className={`chat-search-panel-toggle${searchPanelOpen ? ' chat-search-panel-toggle-open' : ''}`}
+          onClick={() => setSearchPanelOpen((v) => !v)}
+          aria-expanded={searchPanelOpen}
+          aria-controls="chat-search-panel"
+          title={searchPanelOpen ? 'Hide search options' : 'Show search options'}
+        >
+          <span className="chat-search-panel-toggle-label">Search options</span>
+          {!searchPanelOpen ? (
+            <span className="chat-search-panel-toggle-summary">
+              {searchPanelSummary}
+            </span>
+          ) : null}
+          <IconChevron
+            open={searchPanelOpen}
+            size={12}
+            className="chat-search-panel-toggle-chevron"
           />
-          {showBothLayoutToggle ? (
-            <BothLayoutToggle
-              value={bothReplyLayout}
-              onChange={setBothReplyLayout}
+        </button>
+        <div
+          id="chat-search-panel"
+          className={`chat-search-panel-wrap${searchPanelOpen ? ' chat-search-panel-wrap-open' : ''}`}
+          aria-hidden={!searchPanelOpen}
+          inert={!searchPanelOpen}
+        >
+          <div className="chat-search-panel-wrap-inner">
+            <div className="chat-input-bar-toggles">
+              <SourceToggle value={source} onChange={setSource} disabled={loading} />
+              <RetrievalModeToggle
+                value={retrievalMode}
+                onChange={setRetrievalMode}
+                disabled={loading}
+              />
+              {showBothLayoutToggle ? (
+                <BothLayoutToggle
+                  value={bothReplyLayout}
+                  onChange={setBothReplyLayout}
+                  disabled={loading}
+                />
+              ) : null}
+            </div>
+            <AdvancedSearch
+              filterVolume={filterVolume}
+              onFilterVolumeChange={setFilterVolume}
+              retrievalMode={retrievalMode}
               disabled={loading}
             />
-          ) : null}
+          </div>
         </div>
       </div>
     </form>
@@ -1180,7 +1308,13 @@ export function ChatWindow({
   const turns = groupIntoTurns(messages)
 
   return (
-    <div className="chat-window">
+    <div
+      className={
+        composerOpen
+          ? 'chat-window'
+          : 'chat-window chat-window-composer-collapsed'
+      }
+    >
       {breadcrumbBar}
       <div className="chat-messages">
         <div className="chat-messages-inner">
@@ -1319,6 +1453,17 @@ export function ChatWindow({
       </div>
 
       {inputBar}
+      {!composerOpen ? (
+        <button
+          type="button"
+          className="chat-composer-show-btn"
+          onClick={openComposer}
+          aria-label="Show message box"
+          title="Show message box"
+        >
+          <IconArrowUp size={14} />
+        </button>
+      ) : null}
     </div>
   )
 }

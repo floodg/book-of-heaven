@@ -46,7 +46,7 @@ export function ProjectsPage() {
   const threadCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const t of workspace.threads) {
-      if (!t.projectId) continue
+      if (!t.projectId || t.archivedAt) continue
       counts.set(t.projectId, (counts.get(t.projectId) ?? 0) + 1)
     }
     return counts
@@ -59,7 +59,7 @@ export function ProjectsPage() {
   const lastActivity = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of workspace.threads) {
-      if (!t.projectId) continue
+      if (!t.projectId || t.archivedAt) continue
       const prev = map.get(t.projectId)
       if (!prev || t.lastMessageAt > prev) map.set(t.projectId, t.lastMessageAt)
     }

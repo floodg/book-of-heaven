@@ -158,12 +158,49 @@ export function IconArrowRight({ size, ...rest }: IconProps) {
   )
 }
 
+export function IconArrowDown({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 16, rest)}>
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+export function IconArrowUp({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 16, rest)}>
+      <polyline points="6 15 12 9 18 15" />
+    </svg>
+  )
+}
+
 export function IconFolderMove({ size, ...rest }: IconProps) {
   return (
     <svg {...baseProps(size ?? 14, rest)}>
       <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="12 11 15 14 12 17" />
       <line x1="9" y1="14" x2="15" y2="14" />
+    </svg>
+  )
+}
+
+export function IconArchive({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 14, rest)}>
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+      <line x1="10" y1="12" x2="14" y2="12" />
+    </svg>
+  )
+}
+
+export function IconArchiveRestore({ size, ...rest }: IconProps) {
+  return (
+    <svg {...baseProps(size ?? 14, rest)}>
+      <polyline points="9 14 12 11 15 14" />
+      <path d="M12 11v9" />
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v3" />
     </svg>
   )
 }

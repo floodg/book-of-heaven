@@ -278,6 +278,7 @@ async function runChatTurn(
     turnId: string
     source: Source
     retrievalMode: RetrievalMode
+    filterVolume: number | null
     incomingProjectId: string | null
   },
 ): Promise<void> {
@@ -289,6 +290,7 @@ async function runChatTurn(
     turnId,
     source,
     retrievalMode,
+    filterVolume,
     incomingProjectId,
   } = ctx
   const nowIso = new Date().toISOString()
@@ -366,7 +368,7 @@ async function runChatTurn(
 
     const workspaces = workspacesFor(source)
     console.log(
-      `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; thread: ${threadId}`,
+      `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; filterVolume: ${filterVolume ?? 'all'}; thread: ${threadId}`,
     )
     const queryEmbeddingPromise =
       retrievalMode === 'anythingllm' ? null : embedQuery(message.trim())
@@ -393,7 +395,7 @@ async function runChatTurn(
         queryEmbedding,
         ws,
         DEFAULT_MATCH_COUNT,
-        null,
+        filterVolume,
       )
       console.log(`pgvector chunks retrieved: ${hits.length}; workspace: ${ws}`)
       const pgSources = hitsToSources(hits)
@@ -584,6 +586,7 @@ serve(async (req) => {
       source?: unknown
       turn_id?: unknown
       retrievalMode?: unknown
+      filterVolume?: unknown
     }
     try {
       body = await req.json()
@@ -646,6 +649,23 @@ serve(async (req) => {
       )
     }
     const retrievalMode = bodyRetrievalMode ?? parseDefaultRetrievalMode()
+
+    let filterVolume: number | null = null
+    if (body?.filterVolume != null && body.filterVolume !== '') {
+      const n =
+        typeof body.filterVolume === 'number'
+          ? body.filterVolume
+          : Number.parseInt(String(body.filterVolume), 10)
+      if (!Number.isInteger(n) || n < 1 || n > 36) {
+        return new Response(
+          JSON.stringify({
+            error: 'Invalid filterVolume (expected integer 1–36 or null)',
+          }),
+          { status: 400, headers: jsonHeaders },
+        )
+      }
+      filterVolume = n
+    }
 
     const projectIdRaw = body?.project_id
     let incomingProjectId: string | null = null
@@ -830,6 +850,7 @@ serve(async (req) => {
         turnId,
         source,
         retrievalMode,
+        filterVolume,
         incomingProjectId,
       }),
     )

@@ -1,11 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type MouseEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useWorkspace } from '../lib/WorkspaceContext'
 import { recentBucket } from '../lib/time'
+import { filterThreadsByQuery } from '../lib/threadSearch'
 import { ThreadRow } from './ThreadRow'
-import { IconArrowLeft, IconChat, IconFolder, IconPlus } from './Icons'
+import { ChatSearch } from './ChatSearch'
+import { isMobileViewport } from '../lib/viewport'
+import { IconArrowLeft, IconArchive, IconChat, IconFolder, IconPlus } from './Icons'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -20,18 +23,25 @@ const BUCKET_ORDER = ['Today', 'Yesterday', 'Previous 7 days', 'Previous 30 days
 
 export function Sidebar({ user, onHide }: SidebarProps) {
   const workspace = useWorkspace()
+  const [query, setQuery] = useState('')
+  const searching = query.trim().length > 0
 
-  const pinned = useMemo(
-    () =>
-      workspace.threads
-        .filter((t) => t.pinnedAt)
-        .sort((a, b) => ((a.pinnedAt ?? '') < (b.pinnedAt ?? '') ? 1 : -1)),
+  const activeThreads = useMemo(
+    () => workspace.threads.filter((t) => !t.archivedAt),
     [workspace.threads],
   )
 
+  const pinned = useMemo(
+    () =>
+      activeThreads
+        .filter((t) => t.pinnedAt)
+        .sort((a, b) => ((a.pinnedAt ?? '') < (b.pinnedAt ?? '') ? 1 : -1)),
+    [activeThreads],
+  )
+
   const knownThreadIds = useMemo(
-    () => new Set(workspace.threads.map((t) => t.threadId)),
-    [workspace.threads],
+    () => new Set(activeThreads.map((t) => t.threadId)),
+    [activeThreads],
   )
   const orphanPendingCount = useMemo(() => {
     let n = 0
@@ -41,10 +51,33 @@ export function Sidebar({ user, onHide }: SidebarProps) {
     return n
   }, [workspace.pendingThreadIds, knownThreadIds])
 
+  const searchActive = useMemo(
+    () =>
+      filterThreadsByQuery(
+        activeThreads,
+        query,
+      ).sort((a, b) => {
+        const aPinned = a.pinnedAt ? 1 : 0
+        const bPinned = b.pinnedAt ? 1 : 0
+        if (aPinned !== bPinned) return bPinned - aPinned
+        return a.lastMessageAt < b.lastMessageAt ? 1 : -1
+      }),
+    [activeThreads, query],
+  )
+
+  const searchArchived = useMemo(
+    () =>
+      filterThreadsByQuery(
+        workspace.threads.filter((t) => t.archivedAt),
+        query,
+      ).sort((a, b) => ((a.archivedAt ?? '') < (b.archivedAt ?? '') ? 1 : -1)),
+    [workspace.threads, query],
+  )
+
   const bucketedRecents = useMemo(() => {
     const buckets = new Map<string, typeof workspace.threads>()
     const order: string[] = []
-    for (const t of workspace.threads) {
+    for (const t of activeThreads) {
       const key = recentBucket(t.lastMessageAt)
       let list = buckets.get(key)
       if (!list) {
@@ -66,14 +99,27 @@ export function Sidebar({ user, onHide }: SidebarProps) {
       }
     }
     return sortedKeys.map((key) => ({ key, items: buckets.get(key)! }))
-  }, [workspace.threads])
+  }, [activeThreads])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
 
+  const hideAfterMobileLink = (event: MouseEvent<HTMLElement>) => {
+    if (!isMobileViewport()) return
+    const el = event.target as HTMLElement | null
+    if (!el) return
+    // Leave the drawer open for controls (search, ⋯ menu, hide, log out).
+    if (el.closest('button, input, textarea, select')) return
+    if (el.closest('a[href]')) onHide()
+  }
+
   return (
-    <aside className="sidebar" aria-label="Workspace navigation">
+    <aside
+      className="sidebar"
+      aria-label="Workspace navigation"
+      onClick={hideAfterMobileLink}
+    >
       <div className="sidebar-topbar">
         <button
           type="button"
@@ -118,11 +164,53 @@ export function Sidebar({ user, onHide }: SidebarProps) {
           <IconFolder size={14} />
           <span>Projects</span>
         </NavLink>
+        <NavLink
+          to="/archive"
+          className={({ isActive }) =>
+            isActive
+              ? 'sidebar-nav-link sidebar-nav-link-active'
+              : 'sidebar-nav-link'
+          }
+        >
+          <IconArchive size={14} />
+          <span>Archive</span>
+        </NavLink>
       </nav>
+
+      {workspace.loading || workspace.threads.length > 0 ? (
+        <ChatSearch value={query} onChange={setQuery} variant="dark" />
+      ) : null}
 
       <div className="sidebar-sections">
         {workspace.loading ? (
           <div className="sidebar-loading">Loading…</div>
+        ) : searching ? (
+          <>
+            {searchActive.length === 0 && searchArchived.length === 0 ? (
+              <div className="sidebar-empty-state">
+                No conversations match “{query.trim()}”.
+              </div>
+            ) : (
+              <>
+                {searchActive.length > 0 ? (
+                  <div className="sidebar-section">
+                    <div className="sidebar-section-header">Results</div>
+                    {searchActive.map((t) => (
+                      <ThreadRow key={t.threadId} thread={t} variant="dark" />
+                    ))}
+                  </div>
+                ) : null}
+                {searchArchived.length > 0 ? (
+                  <div className="sidebar-section">
+                    <div className="sidebar-section-header">Archived</div>
+                    {searchArchived.map((t) => (
+                      <ThreadRow key={t.threadId} thread={t} variant="dark" />
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </>
         ) : (
           <>
             {pinned.length > 0 ? (
@@ -136,7 +224,7 @@ export function Sidebar({ user, onHide }: SidebarProps) {
 
             <div className="sidebar-section">
               <div className="sidebar-section-header">Recents</div>
-              {workspace.threads.length === 0 ? (
+              {activeThreads.length === 0 ? (
                 <div className="sidebar-empty-state">
                   No conversations yet. Click <IconChat size={11} /> New chat to
                   start one.

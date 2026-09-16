@@ -10,6 +10,7 @@ import {
 } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { normalizeSearchText, sourcesToSearchText } from './searchText'
 
 const STALE_CHAT_JOB_MS = 2 * 60 * 1000
 
@@ -37,7 +38,10 @@ export interface Thread {
   lastMessageAt: string
   projectId: string | null
   pinnedAt: string | null
+  archivedAt: string | null
   model: string | null
+  /** Normalized title + all message bodies + source snippets, for chat search. */
+  searchText: string
 }
 
 export interface WorkspaceApi {
@@ -71,6 +75,8 @@ export interface WorkspaceApi {
   ) => Promise<boolean>
   pinThread: (threadId: string) => Promise<boolean>
   unpinThread: (threadId: string) => Promise<boolean>
+  archiveThread: (threadId: string) => Promise<boolean>
+  unarchiveThread: (threadId: string) => Promise<boolean>
   deleteThread: (threadId: string) => Promise<boolean>
 
   /** Thread ids with an LLM job still pending/processing (from `chat_turn_jobs`). */
@@ -99,6 +105,7 @@ interface RawMessage {
   role: 'user' | 'assistant'
   content: string
   created_at: string
+  sources?: unknown
 }
 
 interface RawThread {
@@ -106,6 +113,7 @@ interface RawThread {
   title: string | null
   project_id: string | null
   pinned_at: string | null
+  archived_at: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -128,18 +136,22 @@ function assembleThreads(
     firstMessage: string
     firstMessageAt: string
     lastMessageAt: string
+    searchParts: string[]
   }
   const agg = new Map<string, Aggregate>()
   for (const m of rawMessages) {
+    const sourceText = sourcesToSearchText(m.sources)
     const current = agg.get(m.thread_id)
     if (!current) {
       agg.set(m.thread_id, {
         firstMessage: m.role === 'user' ? m.content : '',
         firstMessageAt: m.created_at,
         lastMessageAt: m.created_at,
+        searchParts: [m.content, sourceText],
       })
       continue
     }
+    current.searchParts.push(m.content, sourceText)
     if (m.created_at < current.firstMessageAt) {
       current.firstMessageAt = m.created_at
       if (m.role === 'user') current.firstMessage = m.content
@@ -181,7 +193,11 @@ function assembleThreads(
       lastMessageAt: a?.lastMessageAt ?? t?.updated_at ?? t?.created_at ?? new Date(0).toISOString(),
       projectId: t?.project_id ?? null,
       pinnedAt: t?.pinned_at ?? null,
+      archivedAt: t?.archived_at ?? null,
       model: null,
+      searchText: normalizeSearchText(
+        [t?.title ?? '', ...(a?.searchParts ?? [])].join('\n'),
+      ),
     })
   }
 
@@ -219,11 +235,36 @@ export function WorkspaceProvider({
     const fetchId = ++fetchIdRef.current
     setError(null)
     try {
-      const [messagesRes, threadsRes, projectsRes] = await Promise.all([
-        supabase
+      const PAGE = 1000
+      const rawMessages: RawMessage[] = []
+      let messageSelect = 'thread_id, role, content, created_at, sources'
+      for (let from = 0; ; from += PAGE) {
+        let page = await supabase
           .from('chat_messages')
-          .select('thread_id, role, content, created_at')
-          .eq('user_id', user.id),
+          .select(messageSelect)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .range(from, from + PAGE - 1)
+        if (
+          page.error &&
+          messageSelect.includes('sources') &&
+          /sources/i.test(page.error.message)
+        ) {
+          messageSelect = 'thread_id, role, content, created_at'
+          page = await supabase
+            .from('chat_messages')
+            .select(messageSelect)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true })
+            .range(from, from + PAGE - 1)
+        }
+        if (page.error) throw page.error
+        const rows = (page.data ?? []) as RawMessage[]
+        rawMessages.push(...rows)
+        if (rows.length < PAGE) break
+      }
+
+      const [threadsRes, projectsRes] = await Promise.all([
         supabase
           .from('chat_threads')
           .select('thread_id, title, project_id, pinned_at, created_at, updated_at')
@@ -235,19 +276,23 @@ export function WorkspaceProvider({
       ])
       if (fetchIdRef.current !== fetchId) return
 
-      if (messagesRes.error) throw messagesRes.error
       if (threadsRes.error) throw threadsRes.error
       if (projectsRes.error) throw projectsRes.error
 
-      const rawMessages = (messagesRes.data ?? []) as RawMessage[]
       const rawThreads = (threadsRes.data ?? []) as RawThread[]
       const rawProjects = (projectsRes.data ?? []) as RawProject[]
 
       let mergedThreads = assembleThreads(rawMessages, rawThreads)
-      const modelsRes = await supabase
-        .from('chat_threads')
-        .select('thread_id, model')
-        .eq('user_id', user.id)
+      const [modelsRes, archivedRes] = await Promise.all([
+        supabase
+          .from('chat_threads')
+          .select('thread_id, model')
+          .eq('user_id', user.id),
+        supabase
+          .from('chat_threads')
+          .select('thread_id, archived_at')
+          .eq('user_id', user.id),
+      ])
       if (!modelsRes.error && modelsRes.data?.length) {
         const modelByThreadId = new Map<string, string | null>()
         for (const row of modelsRes.data as {
@@ -259,6 +304,19 @@ export function WorkspaceProvider({
         mergedThreads = mergedThreads.map((t) => ({
           ...t,
           model: modelByThreadId.get(t.threadId) ?? t.model ?? null,
+        }))
+      }
+      if (!archivedRes.error && archivedRes.data?.length) {
+        const archivedByThreadId = new Map<string, string | null>()
+        for (const row of archivedRes.data as {
+          thread_id: string
+          archived_at: string | null
+        }[]) {
+          archivedByThreadId.set(row.thread_id, row.archived_at ?? null)
+        }
+        mergedThreads = mergedThreads.map((t) => ({
+          ...t,
+          archivedAt: archivedByThreadId.get(t.threadId) ?? t.archivedAt ?? null,
         }))
       }
       if (fetchIdRef.current !== fetchId) return
@@ -598,6 +656,47 @@ export function WorkspaceProvider({
     [setPinned],
   )
 
+  const setArchived = useCallback(
+    async (threadId: string, archivedAt: string | null): Promise<boolean> => {
+      const previous =
+        threads.find((t) => t.threadId === threadId)?.archivedAt ?? null
+      setThreads((prev) =>
+        prev.map((t) => (t.threadId === threadId ? { ...t, archivedAt } : t)),
+      )
+      const { error: err } = await supabase
+        .from('chat_threads')
+        .update({ archived_at: archivedAt, updated_at: new Date().toISOString() })
+        .eq('thread_id', threadId)
+        .eq('user_id', user.id)
+      if (err) {
+        console.error('setArchived failed', err)
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.threadId === threadId ? { ...t, archivedAt: previous } : t,
+          ),
+        )
+        if (err.code === '42703') {
+          console.warn(
+            'archived_at column missing — run migration 012_chat_thread_archive.sql',
+          )
+        }
+        return false
+      }
+      return true
+    },
+    [user.id, threads],
+  )
+
+  const archiveThread = useCallback<WorkspaceApi['archiveThread']>(
+    (threadId) => setArchived(threadId, new Date().toISOString()),
+    [setArchived],
+  )
+
+  const unarchiveThread = useCallback<WorkspaceApi['unarchiveThread']>(
+    (threadId) => setArchived(threadId, null),
+    [setArchived],
+  )
+
   const deleteThread = useCallback<WorkspaceApi['deleteThread']>(
     async (threadId) => {
       const [msgRes, trRes] = await Promise.all([
@@ -640,6 +739,8 @@ export function WorkspaceProvider({
       moveThreadToProject,
       pinThread,
       unpinThread,
+      archiveThread,
+      unarchiveThread,
       deleteThread,
     }),
     [
@@ -658,6 +759,8 @@ export function WorkspaceProvider({
       moveThreadToProject,
       pinThread,
       unpinThread,
+      archiveThread,
+      unarchiveThread,
       deleteThread,
       setActiveThreadId,
     ],

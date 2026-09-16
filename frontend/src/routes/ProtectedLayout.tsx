@@ -7,6 +7,7 @@ import { YoutubeMapProvider } from '../lib/YoutubeMapContext'
 import { PdfPagesProvider } from '../lib/PdfPagesContext'
 import { Sidebar } from '../components/Sidebar'
 import { IconArrowRight } from '../components/Icons'
+import { isMobileViewport } from '../lib/viewport'
 import './ProtectedLayout.css'
 
 interface ProtectedLayoutProps {
@@ -25,7 +26,7 @@ interface ProtectedLayoutProps {
  * us threading props through the route config.
  */
 export function ProtectedLayout({ user, session }: ProtectedLayoutProps) {
-  const [sidebarHidden, setSidebarHidden] = useState(false)
+  const [sidebarHidden, setSidebarHidden] = useState(() => isMobileViewport())
   return (
     <WorkspaceProvider user={user}>
       <YoutubeMapProvider>

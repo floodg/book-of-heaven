@@ -8,7 +8,28 @@ import { ChatPage } from './routes/ChatPage'
 import { ProjectsPage } from './routes/ProjectsPage'
 import { ProjectDetailPage } from './routes/ProjectDetailPage'
 import { PdfViewerPage } from './routes/PdfViewerPage'
+import { ArchivePage } from './routes/ArchivePage'
 import './App.css'
+
+const AUTH_CHECK_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('Auth check timed out'))
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -20,7 +41,7 @@ function App() {
     // user row is gone server-side) we can be "logged in" with a dead JWT.
     // Validate the token via getUser() and clear the session if it's stale so
     // the user lands on AuthPage cleanly instead of hitting 401s on every
-    // request.
+    // request. Time-box getUser() so a dead API/ngrok URL cannot spin forever.
     let cancelled = false
     ;(async () => {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -33,15 +54,25 @@ function App() {
         return
       }
 
-      const { data: userData, error: userErr } = await supabase.auth.getUser()
-      if (cancelled) return
-      if (userErr || !userData?.user) {
+      try {
+        const { data: userData, error: userErr } = await withTimeout(
+          supabase.auth.getUser(),
+          AUTH_CHECK_TIMEOUT_MS,
+        )
+        if (cancelled) return
+        if (userErr || !userData?.user) {
+          await supabase.auth.signOut().catch(() => {})
+          setSession(null)
+        } else {
+          setSession(existing)
+        }
+      } catch (err) {
+        console.warn('Auth validation failed; signing out', err)
+        if (cancelled) return
         await supabase.auth.signOut().catch(() => {})
         setSession(null)
-      } else {
-        setSession(existing)
       }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     })()
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -82,6 +113,7 @@ function App() {
           <Route path="c/:threadId" element={<ChatPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="archive" element={<ArchivePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

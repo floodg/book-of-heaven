@@ -23,6 +23,8 @@ export interface ChatPageRouteState {
   initialSource?: Source
   /** Retrieval mode from ProjectDetailPage — forwarded to the first request. */
   initialRetrievalMode?: RetrievalMode
+  /** Volume filter (1–36) from ProjectDetailPage advanced search. */
+  initialFilterVolume?: number | null
   projectId?: string
   /**
    * Set when opening a thread from the "Response ready" toast. Skips the
@@ -117,6 +119,7 @@ export function ChatPage() {
       initialMessage={state?.initialMessage ?? null}
       initialSource={state?.initialSource ?? null}
       initialRetrievalMode={state?.initialRetrievalMode ?? null}
+      initialFilterVolume={state?.initialFilterVolume ?? null}
       breadcrumb={breadcrumb}
       onAssistantResponse={handleAssistantResponse}
       onVisibleThreadChange={handleVisibleThreadChange}

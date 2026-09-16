@@ -2,8 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import type { Thread, Project } from '../lib/WorkspaceContext'
 import { useWorkspace } from '../lib/WorkspaceContext'
+import { labelForThread } from '../lib/threadTitle'
 import { useModal } from './Modal'
 import {
+  IconArchive,
+  IconArchiveRestore,
   IconFolder,
   IconFolderMove,
   IconMore,
@@ -28,30 +31,6 @@ function truncate(text: string, max: number): string {
   const clean = text.trim().replace(/\s+/g, ' ')
   if (clean.length <= max) return clean
   return `${clean.slice(0, max - 1)}…`
-}
-
-/**
- * Fallback title derived from the first user message when the LLM-generated
- * title isn't available yet (fresh thread waiting on the backend, or the
- * title-generation call failed). Keeps behaviour consistent with the
- * previous HistorySidebar humanizer.
- */
-function humanizeFirstMessage(msg: string): string {
-  const cleaned = msg.trim().replace(/\s+/g, ' ')
-  if (!cleaned) return 'New conversation'
-  // Strip a few noisy conversational lead-ins that made earlier sidebars ugly.
-  const stripped = cleaned.replace(
-    /^(?:hi[,!.\s]+|hello[,!.\s]+|hey[,!.\s]+|please[,!.\s]+)/i,
-    '',
-  )
-  const capitalized = stripped.charAt(0).toUpperCase() + stripped.slice(1)
-  return capitalized || cleaned
-}
-
-function labelForThread(thread: Thread): string {
-  if (thread.title && thread.title.trim().length > 0) return thread.title
-  if (thread.firstMessage) return humanizeFirstMessage(thread.firstMessage)
-  return 'New conversation'
 }
 
 export function ThreadRow({
@@ -112,6 +91,25 @@ export function ThreadRow({
     closeMenu()
     if (thread.pinnedAt) await workspace.unpinThread(thread.threadId)
     else await workspace.pinThread(thread.threadId)
+  }
+
+  const handleArchive = async () => {
+    closeMenu()
+    const ok = thread.archivedAt
+      ? await workspace.unarchiveThread(thread.threadId)
+      : await workspace.archiveThread(thread.threadId)
+    if (!ok) {
+      await modal.alert({
+        title: 'Something went wrong',
+        message: thread.archivedAt
+          ? 'Could not restore this conversation. Please try again.'
+          : 'Could not archive this conversation. Please try again.',
+      })
+      return
+    }
+    if (!thread.archivedAt && window.location.pathname === `/c/${thread.threadId}`) {
+      navigate('/')
+    }
   }
 
   const handleMove = async (targetProjectId: string | null) => {
@@ -215,6 +213,7 @@ export function ThreadRow({
           submenu={submenu}
           setSubmenu={setSubmenu}
           onPin={handlePin}
+          onArchive={handleArchive}
           onMove={handleMove}
           onDelete={handleDelete}
         />
@@ -229,6 +228,7 @@ interface MenuProps {
   submenu: 'main' | 'move'
   setSubmenu: (s: 'main' | 'move') => void
   onPin: () => void
+  onArchive: () => void
   onMove: (projectId: string | null) => void
   onDelete: () => void
 }
@@ -239,6 +239,7 @@ function ThreadRowMenu({
   submenu,
   setSubmenu,
   onPin,
+  onArchive,
   onMove,
   onDelete,
 }: MenuProps) {
@@ -287,18 +288,31 @@ function ThreadRowMenu({
 
   return (
     <div className="thread-row-menu" role="menu">
-      <button type="button" className="thread-row-menu-item" onClick={onPin}>
-        {thread.pinnedAt ? <IconPinOff size={14} /> : <IconPin size={14} />}
-        <span>{thread.pinnedAt ? 'Unpin' : 'Pin'}</span>
-      </button>
-      <button
-        type="button"
-        className="thread-row-menu-item"
-        onClick={() => setSubmenu('move')}
-      >
-        <IconFolderMove size={14} />
-        <span>Move to project…</span>
-      </button>
+      {!thread.archivedAt ? (
+        <>
+          <button type="button" className="thread-row-menu-item" onClick={onPin}>
+            {thread.pinnedAt ? <IconPinOff size={14} /> : <IconPin size={14} />}
+            <span>{thread.pinnedAt ? 'Unpin' : 'Pin'}</span>
+          </button>
+          <button
+            type="button"
+            className="thread-row-menu-item"
+            onClick={() => setSubmenu('move')}
+          >
+            <IconFolderMove size={14} />
+            <span>Move to project…</span>
+          </button>
+          <button type="button" className="thread-row-menu-item" onClick={onArchive}>
+            <IconArchive size={14} />
+            <span>Archive</span>
+          </button>
+        </>
+      ) : (
+        <button type="button" className="thread-row-menu-item" onClick={onArchive}>
+          <IconArchiveRestore size={14} />
+          <span>Restore</span>
+        </button>
+      )}
       <div className="thread-row-menu-separator" />
       <button
         type="button"

@@ -1,0 +1,70 @@
+.chat-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font: inherit;
+  background: transparent;
+}
+
+.chat-search-dark {
+  margin: 0 10px 8px 10px;
+  padding: 0 10px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(245, 233, 216, 0.7);
+}
+
+.chat-search-dark:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f5e9d8;
+}
+
+.chat-search-dark input {
+  font-size: 13px;
+  color: #f5e9d8;
+}
+
+.chat-search-dark input::placeholder {
+  color: rgba(245, 233, 216, 0.45);
+}
+
+.chat-search-dark input::-webkit-search-cancel-button {
+  filter: invert(1);
+  opacity: 0.6;
+}
+
+.chat-search-light {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e7d5b3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: rgba(74, 46, 24, 0.55);
+  transition: border-color 0.12s, box-shadow 0.12s;
+  width: 240px;
+  max-width: 100%;
+}
+
+.chat-search-light:focus-within {
+  border-color: #92400e;
+  box-shadow: 0 0 0 3px rgba(146, 64, 14, 0.15);
+  color: #2a1408;
+}
+
+.chat-search-light input {
+  font-size: 13px;
+  color: #2a1408;
+}
+
+.chat-search-light input::placeholder {
+  color: rgba(74, 46, 24, 0.5);
+}

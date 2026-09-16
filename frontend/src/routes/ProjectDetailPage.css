@@ -210,12 +210,23 @@
   margin-top: 8px;
 }
 
+.project-threads-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 10px 0;
+  flex-wrap: wrap;
+}
+
 .project-threads-header {
   font-family: 'Lora', 'Playfair Display', Georgia, serif;
   font-size: 16px;
   font-weight: 600;
   color: #2a1408;
-  margin: 0 0 10px 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .project-threads-empty {
