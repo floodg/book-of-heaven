@@ -114,3 +114,25 @@ a.citation-badge--book:focus-visible {
 a.citation-badge:hover .citation-badge-icon {
   opacity: 1;
 }
+
+/* Scripture — soft green (Francis commentary citations → BibleHub) */
+.citation-badge--scripture {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #14532d;
+}
+
+a.citation-badge--scripture:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+  box-shadow: 0 3px 8px rgba(21, 128, 61, 0.16);
+}
+
+a.citation-badge--scripture:focus-visible {
+  outline-color: #15803d;
+}
+
+.citation-badge--scripture .citation-source {
+  background: rgba(34, 197, 94, 0.16);
+  color: #166534;
+}

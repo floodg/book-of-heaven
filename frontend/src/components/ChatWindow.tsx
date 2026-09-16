@@ -471,6 +471,9 @@ interface ChatWindowProps {
   /** Optional source to use for the auto-submitted initial message. Defaults
    *  to the user's persisted preference when omitted. */
   initialSource?: Source | null
+  /** Optional retrieval mode for the auto-submitted initial message and to
+   *  sync the in-chat toggles when arriving from ProjectDetailPage. */
+  initialRetrievalMode?: RetrievalMode | null
   /** Small breadcrumb shown above the messages when the active thread
    *  belongs to a project. Purely presentational; ChatPage looks these
    *  up from WorkspaceContext + route state and passes them in. */
@@ -490,6 +493,7 @@ export function ChatWindow({
   projectId,
   initialMessage,
   initialSource,
+  initialRetrievalMode,
   breadcrumb,
   onAssistantResponse,
   onVisibleThreadChange,
@@ -706,11 +710,13 @@ export function ChatWindow({
   const submitMessage = async (
     messageText: string,
     overrideSource?: Source,
+    overrideRetrievalMode?: RetrievalMode,
   ) => {
     // One in-flight request at a time (shared refs) — block until it finishes.
     if (!messageText || loading) return
 
     const effectiveSource: Source = overrideSource ?? source
+    const effectiveRetrievalMode = overrideRetrievalMode ?? retrievalMode
     const isNewThread = !threadId
     const submitThreadId = threadId ?? generateThreadId()
     const submitTurnId = generateThreadId()
@@ -754,7 +760,7 @@ export function ChatWindow({
       thread_id: submitThreadId,
       turn_id: submitTurnId,
       source: effectiveSource,
-      retrievalMode,
+      retrievalMode: effectiveRetrievalMode,
     }
     if (projectId) body.project_id = projectId
 
@@ -1054,19 +1060,30 @@ export function ChatWindow({
   }
 
   // Auto-submit the initial message handed down from a project detail page.
-  // Runs exactly once per distinct initialMessage value — see autoSubmittedRef.
+  // Runs exactly once per distinct initial payload — see autoSubmittedRef.
   useEffect(() => {
     if (!initialMessage) return
     const trimmed = initialMessage.trim()
     if (!trimmed) return
-    if (autoSubmittedRef.current === trimmed) return
-    autoSubmittedRef.current = trimmed
-    void submitMessage(trimmed, initialSource ?? undefined)
+    const autoKey = `${trimmed}\0${initialSource ?? ''}\0${initialRetrievalMode ?? ''}`
+    if (autoSubmittedRef.current === autoKey) return
+    autoSubmittedRef.current = autoKey
+    void submitMessage(
+      trimmed,
+      initialSource ?? undefined,
+      initialRetrievalMode ?? undefined,
+    )
     // submitMessage is stable-enough in practice (closes over current state)
     // but listing it in deps would fire infinite submits; the ref guard is
     // what actually enforces once-per-mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage])
+  }, [initialMessage, initialSource, initialRetrievalMode])
+
+  // Align the in-chat retrieval toggle with the project compose box selection.
+  useEffect(() => {
+    if (!initialRetrievalMode) return
+    setRetrievalMode(initialRetrievalMode)
+  }, [initialRetrievalMode, setRetrievalMode])
 
   // "Empty landing" layout: no messages yet, not currently loading a reply
   // for *this* view, and not mid-auto-submit from ProjectDetailPage. In that

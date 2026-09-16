@@ -172,27 +172,54 @@ function normalizeTitle(raw: string): string | null {
 
 async function generateThreadTitle(
   userMessage: string,
-  threadId: string,
+  _threadId: string,
 ): Promise<string | null> {
-  const prompt =
-    'Generate a 3 to 6 word title that describes the topic of the user request below. ' +
-    'The title is shown in a chat history sidebar, so it must be concise and readable. ' +
-    'Output ONLY the title itself — no quotes, no trailing punctuation, no citations, ' +
-    'no "Title:" prefix, no explanation, no markdown.\n\n' +
-    `User request: ${userMessage}`
+  const openAiKey = Deno.env.get('OPENAI_API_KEY')?.trim()
+  if (!openAiKey) {
+    console.warn('Title generation skipped: OPENAI_API_KEY not set')
+    return null
+  }
+
+  const model = Deno.env.get('DEFAULT_RESEARCH_MODEL') ?? 'gpt-4o-mini'
 
   try {
-    const { text, error } = await anythingLlmChat(
-      prompt,
-      workspaceSlugFor('narrated'),
-      {
-        sessionId: `book-of-heaven-title-${threadId}`,
-        mode: 'chat',
-        timeoutMs: TITLE_CHAT_TIMEOUT_MS,
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiKey}`,
+        'Content-Type': 'application/json',
       },
-    )
-    if (error || !text.trim()) {
-      console.warn('Title generation returned no usable text', { error })
+      body: JSON.stringify({
+        model,
+        max_tokens: 20,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You generate short chat titles. Output ONLY a 3–6 word title — no quotes, ' +
+              'no punctuation at the end, no "Title:" prefix, no explanation.',
+          },
+          {
+            role: 'user',
+            content: userMessage.slice(0, 500),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(TITLE_CHAT_TIMEOUT_MS),
+    })
+
+    if (!res.ok) {
+      console.warn('Title generation OpenAI error', res.status, await res.text())
+      return null
+    }
+
+    const json = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const text = json.choices?.[0]?.message?.content ?? ''
+    if (!text.trim()) {
+      console.warn('Title generation returned empty content')
       return null
     }
     return normalizeTitle(text)
