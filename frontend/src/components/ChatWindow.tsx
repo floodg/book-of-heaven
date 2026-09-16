@@ -39,7 +39,7 @@ import {
   type RetrievalMode,
 } from '../lib/retrievalMode'
 import { parseVolumeFilter } from '../lib/volumes'
-import { isMobileViewport } from '../lib/viewport'
+import { isMobileViewport, MOBILE_MAX_WIDTH_PX } from '../lib/viewport'
 import './ChatWindow.css'
 
 // What the user asked for on a user row, vs. which workspace produced an
@@ -275,10 +275,12 @@ function SplitTurnTabs({
   assistants,
   youtubeMap,
   pdfPages,
+  questionAnchorId,
 }: {
   assistants: Message[]
   youtubeMap: Record<string, string>
   pdfPages: PdfPagesIndex
+  questionAnchorId?: string | null
 }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const safeIdx = activeIdx < assistants.length ? activeIdx : 0
@@ -315,6 +317,7 @@ function SplitTurnTabs({
           youtubeMap={youtubeMap}
           pdfPages={pdfPages}
           showChip={false}
+          questionAnchorId={questionAnchorId}
         />
       </div>
     </div>
@@ -346,16 +349,51 @@ function CopyQuestionButton({ text }: { text: string }) {
   )
 }
 
+function scrollToTurnQuestion(anchorId: string) {
+  const el = document.getElementById(anchorId)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function SourceList({ sources }: { sources: AnythingLlmSource[] }) {
+  const shown = sources.slice(0, 8)
+  return (
+    <details className="chat-source-list">
+      <summary className="chat-source-list-summary">
+        Sources
+        <span className="chat-source-list-count">{shown.length}</span>
+      </summary>
+      <ol>
+        {shown.map((src, idx) => {
+          const score =
+            typeof src.score === 'number'
+              ? `${Math.round(src.score * 1000) / 10}%`
+              : null
+          const label = src.title ?? src.chunkSource ?? `Source ${idx + 1}`
+          return (
+            <li key={`${src.chunkSource ?? 'src'}-${idx}`}>
+              <span>{label}</span>
+              {score ? <span className="chat-source-score">{score}</span> : null}
+            </li>
+          )
+        })}
+      </ol>
+    </details>
+  )
+}
+
 function AssistantBubble({
   message,
   youtubeMap,
   pdfPages,
   showChip,
+  questionAnchorId,
 }: {
   message: Message
   youtubeMap: Record<string, string>
   pdfPages: PdfPagesIndex
   showChip: boolean
+  questionAnchorId?: string | null
 }) {
   // Only label rows whose source is a concrete workspace; the chip is pure
   // noise on legacy rows and would also mislabel the rare case where an
@@ -390,23 +428,18 @@ function AssistantBubble({
         pdfPages={pdfPages}
       />
       {message.sources && message.sources.length > 0 ? (
-        <div className="chat-source-list">
-          <div className="chat-source-list-title">Sources</div>
-          <ol>
-            {message.sources.slice(0, 8).map((src, idx) => {
-              const score = typeof src.score === 'number'
-                ? `${Math.round(src.score * 1000) / 10}%`
-                : null
-              const label = src.title ?? src.chunkSource ?? `Source ${idx + 1}`
-              return (
-                <li key={`${src.chunkSource ?? 'src'}-${idx}`}>
-                  <span>{label}</span>
-                  {score ? <span className="chat-source-score">{score}</span> : null}
-                </li>
-              )
-            })}
-          </ol>
-        </div>
+        <SourceList sources={message.sources} />
+      ) : null}
+      {questionAnchorId ? (
+        <button
+          type="button"
+          className="chat-back-to-question"
+          onClick={() => scrollToTurnQuestion(questionAnchorId)}
+          aria-label="Scroll back to this question"
+        >
+          <IconArrowUp size={13} />
+          Up to question
+        </button>
       ) : null}
     </div>
   )
@@ -525,12 +558,15 @@ export function ChatWindow({
     () => parseVolumeFilter(initialFilterVolume),
   )
   const [bothReplyLayout, setBothReplyLayout] = useBothReplyLayout()
-  // Collapsed by default on narrow screens so the input bar stays compact on mobile.
+  // Collapsed by default on compact screens (portrait width or landscape
+  // height) so the input bar stays a single Search options row.
   const [searchPanelOpen, setSearchPanelOpen] = useState(
     () => !isMobileViewport(),
   )
   // On mobile, opening an existing thread starts with the composer hidden so
-  // the message field is not focused and the on-screen keyboard stays closed.
+  // the thread can use the screen and the on-screen keyboard stays closed.
+  // New chat (no threadId) keeps the composer open. Search options stay
+  // collapsed behind the summary bar until the user expands them.
   const [composerOpen, setComposerOpen] = useState(
     () => !isMobileViewport() || !threadId,
   )
@@ -1181,6 +1217,19 @@ export function ChatWindow({
     inputRef.current?.focus()
   }, [composerOpen])
 
+  // Portrait is width-constrained; collapse Search options when rotating
+  // from landscape so the stacked toggles don't eat the thread again.
+  useEffect(() => {
+    const portraitMq = window.matchMedia(
+      `(max-width: ${MOBILE_MAX_WIDTH_PX}px)`,
+    )
+    const onChange = () => {
+      if (portraitMq.matches) setSearchPanelOpen(false)
+    }
+    portraitMq.addEventListener('change', onChange)
+    return () => portraitMq.removeEventListener('change', onChange)
+  }, [])
+
   const inputBar = (
     <form className="chat-input-bar" onSubmit={handleSubmit}>
       <div className="chat-input-bar-inner">
@@ -1319,10 +1368,15 @@ export function ChatWindow({
       <div className="chat-messages">
         <div className="chat-messages-inner">
           {turns.map((turn) => {
+            const questionAnchorId = turn.user
+              ? `chat-turn-question-${turn.key}`
+              : null
             const userBubble = turn.user ? (
               <div
+                id={questionAnchorId ?? undefined}
                 key={`${turn.key}-user`}
                 className="chat-bubble-row chat-bubble-row-user"
+                tabIndex={-1}
               >
                 <div className="chat-user-question-wrap">
                   <div className="chat-bubble chat-bubble-user">
@@ -1352,6 +1406,7 @@ export function ChatWindow({
                       assistants={turn.assistants}
                       youtubeMap={youtubeMap}
                       pdfPages={pdfPages}
+                      questionAnchorId={questionAnchorId}
                     />
                   </div>
                 )
@@ -1370,6 +1425,7 @@ export function ChatWindow({
                           youtubeMap={youtubeMap}
                           pdfPages={pdfPages}
                           showChip
+                          questionAnchorId={questionAnchorId}
                         />
                       </div>
                     ))}
@@ -1406,6 +1462,7 @@ export function ChatWindow({
                           youtubeMap={youtubeMap}
                           pdfPages={pdfPages}
                           showChip={false}
+                          questionAnchorId={questionAnchorId}
                         />
                       </div>
                     </div>
@@ -1429,6 +1486,7 @@ export function ChatWindow({
                       showChip={
                         m.source === 'text' || m.source === 'narrated'
                       }
+                      questionAnchorId={questionAnchorId}
                     />
                   </div>
                 ))}

@@ -89,6 +89,16 @@
 
 .chat-bubble-row-user {
   justify-content: flex-end;
+  scroll-margin-top: 8px;
+}
+
+.chat-bubble-row-user:focus {
+  outline: none;
+}
+
+.chat-bubble-row-user:focus-visible {
+  outline: 2px solid rgba(146, 64, 14, 0.35);
+  outline-offset: 4px;
 }
 
 .chat-user-question-wrap {
@@ -223,16 +233,42 @@
   padding-top: 10px;
   border-top: 1px solid #e7d5b3;
   font-size: 12px;
+  white-space: normal;
 }
 
-.chat-source-list-title {
+.chat-source-list-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
   font-weight: 700;
   color: #4a2e18;
-  margin-bottom: 6px;
+  user-select: none;
+}
+
+.chat-source-list-summary::-webkit-details-marker {
+  display: none;
+}
+
+.chat-source-list-summary::before {
+  content: '▸';
+  display: inline-block;
+  font-weight: 500;
+  transition: transform 0.12s ease;
+}
+
+.chat-source-list[open] > .chat-source-list-summary::before {
+  transform: rotate(90deg);
+}
+
+.chat-source-list-count {
+  font-weight: 600;
+  color: rgba(74, 46, 24, 0.55);
 }
 
 .chat-source-list ol {
-  margin: 0;
+  margin: 8px 0 0 0;
   padding-left: 18px;
   display: flex;
   flex-direction: column;
@@ -249,6 +285,26 @@
   color: #7a3509;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.chat-back-to-question {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.chat-back-to-question:hover {
+  color: #78350f;
+  text-decoration: underline;
 }
 
 .chat-bubble-user {
@@ -790,7 +846,9 @@
   z-index: 15;
 }
 
-@media (max-width: 640px) {
+/* Portrait (narrow) and landscape phones (short). Keep in sync with
+ * MOBILE_MEDIA_QUERY in lib/viewport.ts. */
+@media (max-width: 640px), (max-height: 500px) {
   .chat-composer-topbar {
     display: flex;
   }

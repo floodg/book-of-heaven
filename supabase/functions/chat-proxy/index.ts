@@ -3,6 +3,11 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { embedQuery, searchDocumentChunks } from '../_shared/pgvector_search.ts'
 import {
+  composeAnythingLlmMessage,
+  priorUserQuestionsFromRows,
+  rewriteStandaloneQuery,
+} from '../_shared/conversation_query.ts'
+import {
   hitsToReplyMarkdown,
   hitsToSources,
   type AnythingLlmSource,
@@ -362,16 +367,40 @@ async function runChatTurn(
       }
     }
 
-    const composedMessage = projectInstructions
-      ? `You are acting inside a user's project. Follow these project-level instructions for the rest of this conversation:\n\n---\n${projectInstructions}\n---\n\nUser message:\n${message}`
-      : message
+    const { data: priorUserRows, error: priorUserErr } = await supabase
+      .from('chat_messages')
+      .select('content, created_at, turn_id')
+      .eq('user_id', userId)
+      .eq('thread_id', threadId)
+      .eq('role', 'user')
+      .order('created_at', { ascending: false })
+      .limit(7)
+    if (priorUserErr) {
+      console.warn('Prior user messages lookup failed; treating as first turn', priorUserErr)
+    }
+    const priorUserQuestions = priorUserQuestionsFromRows(
+      (priorUserRows ?? []).filter((row) => row.turn_id !== turnId),
+    )
+    const standaloneQuery = await rewriteStandaloneQuery(message, priorUserQuestions)
+    if (priorUserQuestions.length > 0 && standaloneQuery !== message.trim()) {
+      console.log(
+        `Follow-up rewritten for retrieval: ${JSON.stringify(message.trim())} -> ${JSON.stringify(standaloneQuery)}`,
+      )
+    }
+
+    const composedMessage = composeAnythingLlmMessage(
+      message,
+      standaloneQuery,
+      priorUserQuestions,
+      projectInstructions,
+    )
 
     const workspaces = workspacesFor(source)
     console.log(
       `Retrieval mode: ${retrievalMode}; source fanout: ${workspaces.join(',')}; filterVolume: ${filterVolume ?? 'all'}; thread: ${threadId}`,
     )
     const queryEmbeddingPromise =
-      retrievalMode === 'anythingllm' ? null : embedQuery(message.trim())
+      retrievalMode === 'anythingllm' ? null : embedQuery(standaloneQuery)
 
     const mainResultsPromise = Promise.all(workspaces.map(async (ws): Promise<AssistantReply[]> => {
       const slug = workspaceSlugFor(ws)
@@ -399,7 +428,7 @@ async function runChatTurn(
       )
       console.log(`pgvector chunks retrieved: ${hits.length}; workspace: ${ws}`)
       const pgSources = hitsToSources(hits)
-      const pgReply = hitsToReplyMarkdown(hits, ws, message)
+      const pgReply = hitsToReplyMarkdown(hits, ws, standaloneQuery)
 
       if (retrievalMode === 'pgvector') {
         return [{
