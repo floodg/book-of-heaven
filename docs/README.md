@@ -64,3 +64,31 @@ docker stop anythingllm
 | Supabase API (direct) | http://localhost:54331 |
 | Edge Function (via Vite / ngrok origin) | /functions/v1/chat-proxy |
 | AnythingLLM | http://localhost:3001 |
+
+## YouTube map
+
+Citation pills resolve Volume/Number to a YouTube video from this file:
+
+`frontend/public/data/youtube-map.json`
+
+The SPA loads it at boot (`/data/youtube-map.json`). The chat-proxy Edge Function imports the same JSON, so both the browser and the server stay in sync from one file.
+
+Keys are `"volume:number"` (for example `"18:1"`). Values are the 11-character YouTube video ID.
+
+### Updating
+
+When new videos land (a new volume, or replacement slugs):
+
+1. Open `frontend/public/data/youtube-map.json`.
+2. Merge the new `"<volume>:<number>": "<videoId>"` entries. If the slugs file is a full map, you can replace the JSON wholesale as long as existing keys are not dropped by accident.
+3. Leave out numbers that have no video yet (for example missing `11:10` / `12:12`). The UI hides the YouTube icon when a key is absent.
+4. Keep valid JSON (comma after the previous last entry, no trailing comma on the new last entry).
+5. Commit the file. Redeploy the frontend **and** the Edge Function so production picks up the new IDs.
+
+To regenerate instead of editing by hand, from the repo root:
+
+```bash
+npm run build-youtube-map -- --csv path/to/slugs.csv --out frontend/public/data/youtube-map.json
+```
+
+See [SPEC-source-linking.md](./SPEC-source-linking.md) for the citation → YouTube pipeline.
